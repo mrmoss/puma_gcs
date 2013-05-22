@@ -1,6 +1,6 @@
 /uav								JSON				r
 	/id								int					r
-		/status						JSON				r
+		/stat						JSON				r
 			/lat					float				r
 			/lng					float				r
 			/alt					float				r
@@ -13,10 +13,16 @@
 				/angle				char				r
 				/servo				char				r
 		/img						JSON				r
-			/size					int					w/r???
+			/size					int					r
 			/#NUM					JSON				r
+				/src				string				r
 				/lat				float				r
 				/lng				float				r
 				/alt				float				r
 			...
 	...
+
+
+
+
+ uav id status
