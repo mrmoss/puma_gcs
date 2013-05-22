@@ -1,1 +1,22 @@
-...
+/uav								JSON				r
+	/id								int					r
+		/status						JSON				r
+			/lat					float				r
+			/lng					float				r
+			/alt					float				r
+			/radio					JSON				r
+				/io					bool				w/r
+				/quality			char				r
+			/camera					JSON				r
+				/io					bool				w/r
+				/debug				bool				r
+				/angle				char				r
+				/servo				char				r
+		/img						JSON				r
+			/size					int					w/r???
+			/#NUM					JSON				r
+				/lat				float				r
+				/lng				float				r
+				/alt				float				r
+			...
+	...
