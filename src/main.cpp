@@ -38,11 +38,11 @@
 //		Make better names for drone class members.
 //		Comment Everything that isn't commented.
 
-//Service Client Function Declaration
-void service_client(msl::socket& client,const std::string& message);
-
 //Global Drone Vector
 std::vector<drone> drones;
+
+//Service Client Function Declaration
+void service_client(msl::socket& client,const std::string& message);
 
 //Main
 int main()
@@ -180,118 +180,173 @@ void service_client(msl::socket& client,const std::string& message)
 			bool parsed_id=(command_parser>>request);
 			int uav_id=msl::to_int(request);
 
+			//Send Everything
 			if(!parsed_id)
 			{
 				std::cout<<request<<std::endl;
 			}
+
+			//Check for Valid ID (1-255, 0 is invalid!)
 			else if(uav_id>0&&uav_id<256)
 			{
+				//Send Whole UAV Object
 				if(!(command_parser>>request))
 				{
 					std::cout<<request<<std::endl;
 				}
+
+				//Status Request
 				else if(request=="stat")
 				{
+					//Send Whole Status Object
 					if(!(command_parser>>request))
 					{
 						std::cout<<request<<std::endl;
 					}
+
+					//Send Current Lattitude
 					else if(request=="lat")
 					{
 						std::cout<<request<<std::endl;
 					}
+
+					//Send Current Longitude
 					else if(request=="lng")
 					{
 						std::cout<<request<<std::endl;
 					}
+
+					//Send Current Altitude
 					else if(request=="alt")
 					{
 						std::cout<<request<<std::endl;
 					}
+
+					//Radio Request
 					else if(request=="radio")
 					{
+						//Send Whole Radio Object
 						if(!(command_parser>>request))
 						{
 							std::cout<<request<<std::endl;
 						}
+
+						//IO Request
 						else if(request=="io")
 						{
+							//Send Current Radio IO State
 							if(!(command_parser>>request))
 							{
 								std::cout<<request<<" get"<<std::endl;
 							}
+
+							//Set Current Radio IO State
 							else
 							{
 								std::cout<<request<<" set"<<std::endl;
 							}
 						}
+
+						//Send Radio Quality
 						else if(request=="quality")
 						{
 							std::cout<<request<<std::endl;
 						}
 					}
+
+					//Camera Request
 					else if(request=="camera")
 					{
+						//Send Whole Camera Object
 						if(!(command_parser>>request))
 						{
 							std::cout<<request<<std::endl;
 						}
+
+						//IO Request
 						else if(request=="io")
 						{
+							//Send Current Camera IO State
 							if(!(command_parser>>request))
 							{
 								std::cout<<request<<" get"<<std::endl;
 							}
+
+							//Set Current Camera IO State
 							else
 							{
 								std::cout<<request<<" set"<<std::endl;
 							}
 						}
+
+						//Send Camera Debug
 						else if(request=="debug")
 						{
 							std::cout<<request<<std::endl;
 						}
+
+						//Send Camera Angle
 						else if(request=="angle")
 						{
 							std::cout<<request<<std::endl;
 						}
+
+						//Send Camera Servo Angle
 						else if(request=="servo")
 						{
 							std::cout<<request<<std::endl;
 						}
 					}
 				}
+
+				//Image Request
 				else if(request=="img")
 				{
+					//Parse Image Number
 					bool parsed=(command_parser>>request);
 					int uav_img=msl::to_int(request);
 
+					//Send Whole Image Object
 					if(!parsed)
 					{
 						std::cout<<request<<std::endl;
 					}
+
+					//Send Total Number of Images
 					else if(request=="size")
 					{
 						std::cout<<request<<std::endl;
 					}
+
+					//Check for Valid Image Number (1-32676, 0 is invalid!)
 					else if(uav_img>0)
 					{
+
+						//Send Whole Image Number Object
 						if(!(command_parser>>request))
 						{
 							std::cout<<request<<std::endl;
 						}
+
+						//Send Image Source
 						else if(request=="src")
 						{
 							std::cout<<request<<std::endl;
 						}
+
+						//Send Image Lattitude
 						else if(request=="lat")
 						{
 							std::cout<<request<<std::endl;
 						}
+
+						//Send Image Longitude
 						else if(request=="lng")
 						{
 							std::cout<<request<<std::endl;
 						}
+
+						//Send Image Altitude
 						else if(request=="alt")
 						{
 							std::cout<<request<<std::endl;
