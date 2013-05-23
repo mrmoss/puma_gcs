@@ -29,56 +29,219 @@
 //Service Client Function Declaration
 void service_client(msl::socket& client,const std::string& message);
 
+class location
+{
+	public:
+		location(const float lattitude=0,const float longitude=0,const float altitude=0):lat(lattitude),lng(longitude),alt(altitude)
+		{}
+
+		float lat;
+		float lng;
+		float alt;
+};
+
+//UAV Class
+class uav
+{
+	public:
+		bool set_stat(const std::string& data)
+		{
+			if(data.size()==17)
+			{
+				flags=data[0];
+				camera_angle=*(short*)(data.c_str()+1);
+				camera_servo=*(short*)(data.c_str()+3);
+				loc.lat=*(float*)(data.c_str()+5);
+				loc.lng=*(float*)(data.c_str()+9);
+				loc.alt=*(float*)(data.c_str()+13);
+				return true;
+			}
+
+			return false;
+		}
+
+		bool add_location(const std::string& data)
+		{
+			if(data.size()==12)
+			{
+				location temp(*(short*)(data.c_str()),*(short*)(data.c_str()+4),*(short*)(data.c_str()+8));
+				nex_locs.push_back(temp);
+			}
+		}
+
+		char flags;
+		short camera_angle;
+		short camera_servo;
+		location loc;
+		std::vector<location> nex_locs;
+};
+
+uav MY_UAV;
+
 //Main
 int main()
 {
-	//Create Server
+	//Create Serial
+	msl::serial serial("/dev/ttyUSB0",57600);
+	serial.connect();
+
+	//Serial Parsing Data
+	std::string serial_buffer="";
+	int serial_state=0;
+
+	//Check Serial
+	if(serial.good())
+	{
+		std::cout<<"Serial =)"<<std::endl;
+	}
+	else
+	{
+		std::cout<<"Serial =("<<std::endl;
+		exit(0);
+	}
+
+		//Create Server
 	msl::socket server("0.0.0.0:8080");
 	server.create_tcp();
 
 	//Check Server
 	if(server.good())
-		std::cout<<"=)"<<std::endl;
+	{
+		std::cout<<"Socket =)"<<std::endl;
+	}
 	else
-		std::cout<<"=("<<std::endl;
+	{
+		std::cout<<"Socket =("<<std::endl;
+		exit(0);
+	}
 
 	//Vectors for Clients
-	std::vector<msl::socket> clients;
-	std::vector<std::string> client_messages;
+	std::vector<msl::socket> web_clients;
+	std::vector<std::string> web_buffers;
 
 	//Be a server...forever...
 	while(true)
 	{
+		//Temp Byte
+		char byte='\n';
+
+		//Check for Serial Data
+		if(serial.available()>0&&serial.read(&byte,1)==1)
+		{
+			if(serial_state==0)
+			{
+				if(byte=='s')
+					serial_state=1;
+				else if(byte=='c')
+					serial_state=4;
+			}
+			else if(serial_state==1)
+			{
+				if(byte=='t')
+					serial_state=2;
+				else
+					serial_state=0;
+			}
+			else if(serial_state==2)
+			{
+				if(byte=='a')
+					serial_state=3;
+				else
+					serial_state=0;
+			}
+			else if(serial_state==3)
+			{
+				if(byte=='t')
+					serial_state=7;
+			}
+			else if(serial_state==4)
+			{
+				if(byte=='a')
+					serial_state=5;
+				else
+					serial_state=0;
+			}
+			else if(serial_state==5)
+			{
+				if(byte=='m')
+					serial_state=6;
+				else
+					serial_state=0;
+			}
+			else if(serial_state==6)
+			{
+				if(byte=='1')
+					serial_state=8;
+				else if(byte=='2')
+					serial_state=9;
+				else
+					serial_state=0;
+			}
+			else if(serial_state==7)
+			{
+				if(serial_buffer.size()<14)
+				{
+					serial_buffer+=byte;
+				}
+				else
+				{
+					MY_UAV.set_stat(serial_buffer);
+					serial_state=0;
+				}
+			}
+			else if(serial_state==8)
+			{
+				if(serial_buffer.size()<2||(serial_buffer.size()>=2&&serial_buffer.size()-2<*(short*)(serial_buffer.c_str())))
+				{
+					serial_buffer+=byte;
+				}
+				else
+				{
+					//save the image
+					serial_state=0;
+				}
+			}
+			else if(serial_state==9)
+			{
+				if(serial_buffer.size()<12)
+				{
+					serial_buffer+=byte;
+				}
+				else
+				{
+					//Set the variables
+					serial_state=0;
+				}
+			}
+		}
+
 		//Check for a Connecting Client
 		msl::socket client=server.accept();
 
 		//If Client Connected
 		if(client.good())
 		{
-			clients.push_back(client);
-			client_messages.push_back("");
+			web_clients.push_back(client);
+			web_buffers.push_back("");
 		}
 
 		//Handle Clients
-		for(unsigned int ii=0;ii<clients.size();++ii)
+		for(unsigned int ii=0;ii<web_clients.size();++ii)
 		{
 			//Service Good Clients
-			if(clients[ii].good())
+			if(web_clients[ii].good())
 			{
-				//Temp
-				char byte='\n';
-
 				//Get a Byte
-				while(clients[ii].available()>0&&clients[ii].read(&byte,1)==1)
+				while(web_clients[ii].available()>0&&web_clients[ii].read(&byte,1)==1)
 				{
 					//Add the Byte to Client Buffer
-					client_messages[ii]+=byte;
+					web_buffers[ii]+=byte;
 
 					//Check for an End Byte
-					if(msl::ends_with(client_messages[ii],"\r\n\r\n"))
+					if(msl::ends_with(web_buffers[ii],"\r\n\r\n"))
 					{
-						service_client(clients[ii],client_messages[ii]);
-						client_messages[ii].clear();
+						service_client(web_clients[ii],web_buffers[ii]);
+						web_buffers[ii].clear();
 					}
 				}
 			}
@@ -86,9 +249,9 @@ int main()
 			//Disconnect Bad Clients
 			else
 			{
-				clients[ii].close();
-				clients.erase(clients.begin()+ii);
-				client_messages.erase(client_messages.begin()+ii);
+				web_clients[ii].close();
+				web_clients.erase(web_clients.begin()+ii);
+				web_buffers.erase(web_buffers.begin()+ii);
 				--ii;
 			}
 		}

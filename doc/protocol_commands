@@ -1,5 +1,8 @@
+================
+Client to Server
+================
 /uav								JSON				r
-	/id								int					r
+	/id								byte				r
 		/stat						JSON				r
 			/lat					float				r
 			/lng					float				r
@@ -10,10 +13,10 @@
 			/camera					JSON				r
 				/io					bool				w/r
 				/debug				bool				r
-				/angle				char				r
-				/servo				char				r
+				/angle				short				r
+				/servo				short				r
 		/img						JSON				r
-			/size					int					r
+			/size					short				r
 			/#NUM					JSON				r
 				/src				string				r
 				/lat				float				r
@@ -22,7 +25,47 @@
 			...
 	...
 
+================
+Serial to Server
+================
+stat	(tx)
+	flags							bitfield
+	camera_angle					short
+	camera_servo					short
+	lat								float
+	lng								float
+	alt								float
 
+img1	(tx)
+	seq								short
+	size_frame						short
+	size_block						byte
+	data							bytes
 
+img2	(tx)
+	lat								float
+	lng								float
+	alt								float
 
- uav id status
+stat	(rx)
+	radio(on/off)(0x01/0x00)		byte
+
+img1	(rx)
+	camera(on/off)(0x01/0x00)		byte
+
+img2	(rx)
+	camera(on/off)(0x01/0x00)		byte
+
+=================================
+Server Side Serial Parsing States
+=================================
+0		s/c
+1		t
+2		a
+3		t
+4		a
+5		m
+6		0/1
+7		STAT DATA (17 bytes)
+8		IMG1 DATA (5+ bytes)
+9		IMG2 DATA (12 bytes)
