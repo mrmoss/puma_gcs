@@ -182,14 +182,17 @@ bool drone::img1_add_block(const std::string& packet)
 
 				if(msl::ends_with(_img1_data,jpeg_footer))
 				{
-					std::string prefix="img_";
-					std::string midfix="";
-					std::string postfix=".jpg";
+					std::string id_string=msl::to_string(static_cast<unsigned int>(_id));
 
-					for(int place=10;place<10000;place*=10)
-						midfix+="0";
+					while(id_string.size()<3)
+						id_string.insert(0,"0");
 
-					std::string filename=prefix+midfix+msl::to_string(_img1_seq)+postfix;
+					std::string seq_string=msl::to_string(_img1_seq);
+
+					while(seq_string.size()<3)
+						seq_string.insert(0,"0");
+
+					std::string filename="web/drone/img_"+id_string+"_"+seq_string+".jpg";
 					msl::string_to_file(_img1_data,filename);
 
 					++_img1_seq;

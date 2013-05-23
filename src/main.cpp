@@ -33,7 +33,6 @@
 #include <vector>
 
 //TTD
-//		Move location and drone classes to own cpp/hpp.
 //		Make socket responses send actual data.
 //		Create serial send functions.
 //		Make better names for drone class members.
@@ -42,14 +41,16 @@
 //Service Client Function Declaration
 void service_client(msl::socket& client,const std::string& message);
 
+//Global Drone Vector
 std::vector<drone> drones;
 
 //Main
 int main()
 {
+	//Create a Drone
 	drones.push_back(drone(1,"/dev/ttyUSB0",57600));
 
-	//Check Serials
+	//Check Drones
 	for(unsigned int ii=0;ii<drones.size();++ii)
 	{
 		std::cout<<"Drone["<<static_cast<unsigned int>(drones[ii].id())<<"] ";
