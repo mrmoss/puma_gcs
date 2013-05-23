@@ -1,1 +1,1 @@
-g++ ../src/main.cpp ../src/msl/file_util.cpp ../src/msl/serial.cpp ../src/msl/socket.cpp ../src/msl/socket_util.cpp ../src/msl/string_util.cpp ../src/msl/time_util.cpp -o puma_gcs -O
+g++ ../src/main.cpp ../src/drone.cpp ../src/location.cpp ../src/msl/file_util.cpp ../src/msl/serial.cpp ../src/msl/socket.cpp ../src/msl/socket_util.cpp ../src/msl/string_util.cpp ../src/msl/time_util.cpp -o puma_gcs -O

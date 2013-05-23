@@ -2,14 +2,20 @@
 //	Created By:		Steven Kibler and Mike Moss
 //	Modified On:	05/22/2013
 
+//C Standard Library Header
+#include <cstdlib>
+
+//Drone Header
+#include "drone.hpp"
+
 //File Utility Header
 #include "msl/file_util.hpp"
 
 //IO Stream Header
 #include <iostream>
 
-//Serial Header
-#include "msl/serial.hpp"
+//Location Header
+#include "location.hpp"
 
 //Socket Header
 #include "msl/socket.hpp"
@@ -26,81 +32,40 @@
 //Vector Header
 #include <vector>
 
+//TTD
+//		Move location and drone classes to own cpp/hpp.
+//		Make socket responses send actual data.
+//		Create serial send functions.
+//		Make better names for drone class members.
+//		Comment Everything that isn't commented.
+
 //Service Client Function Declaration
 void service_client(msl::socket& client,const std::string& message);
 
-class location
-{
-	public:
-		location(const float lattitude=0,const float longitude=0,const float altitude=0):lat(lattitude),lng(longitude),alt(altitude)
-		{}
-
-		float lat;
-		float lng;
-		float alt;
-};
-
-//UAV Class
-class uav
-{
-	public:
-		bool set_stat(const std::string& data)
-		{
-			if(data.size()==17)
-			{
-				flags=data[0];
-				camera_angle=*(short*)(data.c_str()+1);
-				camera_servo=*(short*)(data.c_str()+3);
-				loc.lat=*(float*)(data.c_str()+5);
-				loc.lng=*(float*)(data.c_str()+9);
-				loc.alt=*(float*)(data.c_str()+13);
-				return true;
-			}
-
-			return false;
-		}
-
-		bool add_location(const std::string& data)
-		{
-			if(data.size()==12)
-			{
-				location temp(*(short*)(data.c_str()),*(short*)(data.c_str()+4),*(short*)(data.c_str()+8));
-				nex_locs.push_back(temp);
-			}
-		}
-
-		char flags;
-		short camera_angle;
-		short camera_servo;
-		location loc;
-		std::vector<location> nex_locs;
-};
-
-uav MY_UAV;
+std::vector<drone> drones;
 
 //Main
 int main()
 {
-	//Create Serial
-	msl::serial serial("/dev/ttyUSB0",57600);
-	serial.connect();
+	drones.push_back(drone(1,"/dev/ttyUSB0",57600));
 
-	//Serial Parsing Data
-	std::string serial_buffer="";
-	int serial_state=0;
-
-	//Check Serial
-	if(serial.good())
+	//Check Serials
+	for(unsigned int ii=0;ii<drones.size();++ii)
 	{
-		std::cout<<"Serial =)"<<std::endl;
-	}
-	else
-	{
-		std::cout<<"Serial =("<<std::endl;
-		exit(0);
+		std::cout<<"Drone["<<static_cast<unsigned int>(drones[ii].id())<<"] ";
+
+		if(drones[ii].good())
+		{
+			std::cout<<"=)"<<std::endl;
+		}
+		else
+		{
+			std::cout<<"=("<<std::endl;
+			exit(0);
+		}
 	}
 
-		//Create Server
+	//Create Server
 	msl::socket server("0.0.0.0:8080");
 	server.create_tcp();
 
@@ -122,98 +87,9 @@ int main()
 	//Be a server...forever...
 	while(true)
 	{
-		//Temp Byte
-		char byte='\n';
-
-		//Check for Serial Data
-		if(serial.available()>0&&serial.read(&byte,1)==1)
-		{
-			if(serial_state==0)
-			{
-				if(byte=='s')
-					serial_state=1;
-				else if(byte=='c')
-					serial_state=4;
-			}
-			else if(serial_state==1)
-			{
-				if(byte=='t')
-					serial_state=2;
-				else
-					serial_state=0;
-			}
-			else if(serial_state==2)
-			{
-				if(byte=='a')
-					serial_state=3;
-				else
-					serial_state=0;
-			}
-			else if(serial_state==3)
-			{
-				if(byte=='t')
-					serial_state=7;
-			}
-			else if(serial_state==4)
-			{
-				if(byte=='a')
-					serial_state=5;
-				else
-					serial_state=0;
-			}
-			else if(serial_state==5)
-			{
-				if(byte=='m')
-					serial_state=6;
-				else
-					serial_state=0;
-			}
-			else if(serial_state==6)
-			{
-				if(byte=='1')
-					serial_state=8;
-				else if(byte=='2')
-					serial_state=9;
-				else
-					serial_state=0;
-			}
-			else if(serial_state==7)
-			{
-				if(serial_buffer.size()<14)
-				{
-					serial_buffer+=byte;
-				}
-				else
-				{
-					MY_UAV.set_stat(serial_buffer);
-					serial_state=0;
-				}
-			}
-			else if(serial_state==8)
-			{
-				if(serial_buffer.size()<2||(serial_buffer.size()>=2&&serial_buffer.size()-2<*(short*)(serial_buffer.c_str())))
-				{
-					serial_buffer+=byte;
-				}
-				else
-				{
-					//save the image
-					serial_state=0;
-				}
-			}
-			else if(serial_state==9)
-			{
-				if(serial_buffer.size()<12)
-				{
-					serial_buffer+=byte;
-				}
-				else
-				{
-					//Set the variables
-					serial_state=0;
-				}
-			}
-		}
+		//Update Drones
+		for(unsigned int ii=0;ii<drones.size();++ii)
+			drones[ii].update();
 
 		//Check for a Connecting Client
 		msl::socket client=server.accept();
@@ -228,6 +104,9 @@ int main()
 		//Handle Clients
 		for(unsigned int ii=0;ii<web_clients.size();++ii)
 		{
+			//Temp Byte
+			char byte='\n';
+
 			//Service Good Clients
 			if(web_clients[ii].good())
 			{
@@ -297,14 +176,14 @@ void service_client(msl::socket& client,const std::string& message)
 			command_parser>>request;
 
 			//Parse id
-			bool parsed_uav=(command_parser>>request);
+			bool parsed_id=(command_parser>>request);
 			int uav_id=msl::to_int(request);
 
-			if(!parsed_uav)
+			if(!parsed_id)
 			{
 				std::cout<<request<<std::endl;
 			}
-			else if(uav_id>0)
+			else if(uav_id>0&&uav_id<256)
 			{
 				if(!(command_parser>>request))
 				{
@@ -463,7 +342,7 @@ void service_client(msl::socket& client,const std::string& message)
 				client<<msl::http_pack_string(file);
 		}
 
-		//Close Connectiona
+		//Close Connection
 		client.close();
 	}
 
