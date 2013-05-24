@@ -29,6 +29,9 @@
 //String Utility Header
 #include "msl/string_util.hpp"
 
+//Time Utility Header
+#include "msl/time_util.hpp"
+
 //Vector Header
 #include <vector>
 
@@ -36,7 +39,8 @@
 //		Make socket responses send actual data.
 //		Create serial send functions.
 //		Make better names for drone class members.
-//		Comment Everything that isn't commented.
+//		Comment everything that isn't commented.
+//		Test out everything.
 
 //Global Drone Vector
 std::vector<drone> drones;
@@ -48,7 +52,7 @@ void service_client(msl::socket& client,const std::string& message);
 int main()
 {
 	//Create a Drone
-	drones.push_back(drone(1,"/dev/ttyUSB0",57600));
+	//drones.push_back(drone(1,"/dev/ttyUSB0",57600));
 
 	//Check Drones
 	for(unsigned int ii=0;ii<drones.size();++ii)
@@ -135,6 +139,9 @@ int main()
 				--ii;
 			}
 		}
+
+		//Give OS a Break
+		usleep(0);
 	}
 
 	//Call Me Plz T_T

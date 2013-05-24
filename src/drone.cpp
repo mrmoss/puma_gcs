@@ -42,7 +42,7 @@ void drone::close()
 {
 	_serial.close();
 }
-
+#include <iostream>
 void drone::update()
 {
 	if(good())
@@ -51,6 +51,8 @@ void drone::update()
 
 		while(_serial.available()>0&&_serial.read(&byte,1)==1)
 		{
+			std::cout<<_serial_state<<std::endl;
+
 			if(_serial_state==0)
 			{
 				if(byte=='s')
@@ -114,7 +116,7 @@ void drone::update()
 			}
 			else if(_serial_state==8)
 			{
-				if(_serial_buffer.size()<5||(_serial_buffer.size()>=5&&_serial_buffer.size()-5<*(char*)(_serial_buffer.c_str()+5)))
+				if(_serial_buffer.size()<5||(_serial_buffer.size()>=5&&_serial_buffer.size()-5<static_cast<unsigned int>(*(char*)(_serial_buffer.c_str()+5))))
 				{
 					_serial_buffer+=byte;
 				}
@@ -174,7 +176,7 @@ bool drone::img1_add_block(const std::string& packet)
 		{
 			_img1_data+=(packet.c_str()+5);
 
-			if(_img1_data.size()==*(short*)(packet.c_str()+2))
+			if(_img1_data.size()==static_cast<unsigned int>(*(short*)(packet.c_str()+2)))
 			{
 				std::string jpeg_footer="";
 				jpeg_footer+=255;
@@ -199,6 +201,8 @@ bool drone::img1_add_block(const std::string& packet)
 					_img1_data.clear();
 				}
 			}
+
+			return true;
 		}
 		else
 		{
@@ -206,6 +210,8 @@ bool drone::img1_add_block(const std::string& packet)
 			_img1_data.clear();
 		}
 	}
+
+	return false;
 }
 
 bool drone::img2_add_location(const std::string& packet)
@@ -214,5 +220,8 @@ bool drone::img2_add_location(const std::string& packet)
 	{
 		location temp(*(float*)(packet.c_str()),*(float*)(packet.c_str()+4),*(float*)(packet.c_str()+8));
 		_img2_locations.push_back(temp);
+		return true;
 	}
+
+	return false;
 }
