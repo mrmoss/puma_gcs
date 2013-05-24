@@ -55,8 +55,8 @@ class drone
 		char _flags;
 		short _img1_seq;
 		std::string _img1_data;
-		short _img2_angle;
-		short _img2_servo;
+		float _img2_angle;
+		float _img2_servo;
 		location _location;
 		std::vector<location> _img2_locations;
 };

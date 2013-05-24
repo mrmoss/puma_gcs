@@ -52,11 +52,13 @@ void service_client(msl::socket& client,const std::string& message);
 int main()
 {
 	//Create a Drone
-	//drones.push_back(drone(1,"/dev/ttyUSB0",57600));
+	drones.push_back(drone(1,"/dev/ttyUSB0",57600));
 
-	//Check Drones
+	//Connect and Check Drones
 	for(unsigned int ii=0;ii<drones.size();++ii)
 	{
+		drones[ii].connect();
+
 		std::cout<<"Drone["<<static_cast<unsigned int>(drones[ii].id())<<"] ";
 
 		if(drones[ii].good())

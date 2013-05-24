@@ -7,7 +7,7 @@
 #include "msl/string_util.hpp"
 
 drone::drone(const unsigned char id,const std::string& serial_name,const unsigned int serial_baud):_id(id),_serial(serial_name,serial_baud),
-	_serial_state(0),_serial_buffer(""),_flags(0x00),_img1_seq(0),_img1_data(""),_img2_angle(0),_img2_servo(0),_location(0,0,0)
+	_serial_state(0),_serial_buffer(""),_flags(0x00),_img1_seq(0),_img1_data(""),_img2_angle(0.0),_img2_servo(0.0),_location(0.0,0.0,0.0)
 {}
 
 drone::drone(const drone& copy):_id(copy._id),_serial(copy._serial),_serial_state(copy._serial_state),_serial_buffer(copy._serial_buffer),_flags(copy._flags),
@@ -51,7 +51,7 @@ void drone::update()
 
 		while(_serial.available()>0&&_serial.read(&byte,1)==1)
 		{
-			std::cout<<_serial_state<<std::endl;
+			//std::cout<<_serial_state<<std::endl;
 
 			if(_serial_state==0)
 			{
@@ -104,7 +104,7 @@ void drone::update()
 			}
 			else if(_serial_state==7)
 			{
-				if(_serial_buffer.size()<14)
+				if(_serial_buffer.size()<21)
 				{
 					_serial_buffer+=byte;
 				}
@@ -154,14 +154,24 @@ bool drone::good() const
 
 bool drone::stat_set(const std::string& packet)
 {
-	if(packet.size()==17)
+	std::cout<<packet.size()<<std::endl;
+
+	if(packet.size()==21)
 	{
 		_flags=packet[0];
-		_img2_angle=*(short*)(packet.c_str()+1);
-		_img2_servo=*(short*)(packet.c_str()+3);
-		_location.lat=*(float*)(packet.c_str()+5);
-		_location.lng=*(float*)(packet.c_str()+9);
-		_location.alt=*(float*)(packet.c_str()+13);
+		_img2_angle=*(float*)(packet.c_str()+1);
+		_img2_servo=*(float*)(packet.c_str()+5);
+		_location.lat=*(float*)(packet.c_str()+9);
+		_location.lng=*(float*)(packet.c_str()+13);
+		_location.alt=*(float*)(packet.c_str()+17);
+
+		std::cout<<"_flags\t"<<(unsigned int)_flags<<std::endl;
+		std::cout<<"_img2_angle\t"<<_img2_angle<<std::endl;
+		std::cout<<"_img2_servo\t"<<_img2_servo<<std::endl;
+		std::cout<<"lat\t"<<_location.lat<<std::endl;
+		std::cout<<"lng\t"<<_location.lng<<std::endl;
+		std::cout<<"alt\t"<<_location.alt<<std::endl;
+
 		return true;
 	}
 

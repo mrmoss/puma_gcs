@@ -11,7 +11,7 @@ class location
 {
 	public:
 		//Constructor (Default)
-		location(const float lattitude=0,const float longitude=0,const float altitude=0);
+		location(const float lattitude=0.0,const float longitude=0.0,const float altitude=0.0);
 
 		//Public Member Functions
 		float lat;
