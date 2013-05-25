@@ -52,7 +52,7 @@ void service_client(msl::socket& client,const std::string& message);
 int main()
 {
 	//Create a Drone
-	drones.push_back(drone(1,"/dev/ttyUSB0",57600));
+	drones.push_back(drone(1,"/dev/ttyUSB1",57600));
 
 	//Connect and Check Drones
 	for(unsigned int ii=0;ii<drones.size();++ii)
@@ -143,7 +143,7 @@ int main()
 		}
 
 		//Give OS a Break
-		usleep(0);
+		//usleep(0);
 	}
 
 	//Call Me Plz T_T
@@ -252,7 +252,16 @@ void service_client(msl::socket& client,const std::string& message)
 							//Set Current Radio IO State
 							else
 							{
-								std::cout<<request<<" set"<<std::endl;
+								for(unsigned int ii=0;ii<drones.size();++ii)
+								{
+									if(drones[ii].id()==uav_id)
+									{
+										if(msl::to_int(request)==0)
+											drones[ii].stat_set(drones[ii].stat_get()&(~1));
+										else
+											drones[ii].stat_set(drones[ii].stat_get()|1);
+									}
+								}
 							}
 						}
 
@@ -284,7 +293,16 @@ void service_client(msl::socket& client,const std::string& message)
 							//Set Current Camera IO State
 							else
 							{
-								std::cout<<request<<" set"<<std::endl;
+								for(unsigned int ii=0;ii<drones.size();++ii)
+								{
+									if(drones[ii].id()==uav_id)
+									{
+										if(msl::to_int(request)==0)
+											drones[ii].stat_set(drones[ii].stat_get()&(~2));
+										else
+											drones[ii].stat_set(drones[ii].stat_get()|2);
+									}
+								}
 							}
 						}
 

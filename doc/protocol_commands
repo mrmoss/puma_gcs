@@ -29,43 +29,38 @@ Client to Server
 Serial to Server
 ================
 stat	(tx)
-	flags							bitfield
-	camera_angle					short
-	camera_servo					short
-	lat								float
-	lng								float
-	alt								float
+	flags(res res res sd_det file_created mpu_ena sys_ok img2)							bitfield
+	camera_angle																		float
+	camera_servo																		float
+	lat																					float
+	lng																					float
+	alt																					float
 
 img1	(tx)
-	seq								short
-	size_frame						short
-	size_block						byte
-	data							bytes
+	seq																					short
+	size_frame																			short
+	size_block																			byte
+	data																				bytes
 
 img2	(tx)
-	lat								float
-	lng								float
-	alt								float
+	size																				short
+	lat																					float
+	lng																					float
+	alt																					float
 
 stat	(rx)
-	radio(on/off)(0x01/0x00)		byte
-
-img1	(rx)
-	camera(on/off)(0x01/0x00)		byte
-
-img2	(rx)
-	camera(on/off)(0x01/0x00)		byte
+	flags(img2 img1 radio)
 
 =================================
 Server Side Serial Parsing States
 =================================
-0		s/c
+0		s/i
 1		t
 2		a
 3		t
-4		a
-5		m
-6		0/1
+4		m
+5		g
+6		1/2
 7		STAT DATA (17 bytes)
 8		IMG1 DATA (5+ bytes)
 9		IMG2 DATA (12 bytes)

@@ -4,6 +4,9 @@
 //Location Header
 #include "location.hpp"
 
+//Map Header
+#include <map>
+
 //Serial Header
 #include "msl/serial.hpp"
 
@@ -41,24 +44,32 @@ class drone
 		//Serial Port Good Accessor
 		bool good() const;
 
+		//Stat Accessor
+		char stat_get() const;
+
+		//Stat Mutator
+		void stat_set(const char flags);
+
 	private:
 		//Member Functions
-		bool stat_set(const std::string& packet);
-		bool img1_add_block(const std::string& packet);
-		bool img2_add_location(const std::string& packet);
+		void stat_update(const std::string& packet);
+		void img1_add_block(const std::string& packet);
+		void img2_add_location(const std::string& packet);
 
 		//Member Variables
 		unsigned char _id;
 		msl::serial _serial;
 		int _serial_state;
 		std::string _serial_buffer;
-		char _flags;
+		char _stat_get_flags;
+		char _stat_set_flags;
 		short _img1_seq;
 		std::string _img1_data;
 		float _img2_angle;
 		float _img2_servo;
+		short _img2_size;
 		location _location;
-		std::vector<location> _img2_locations;
+		std::map<short,location> _img2_locations;
 };
 
 #endif

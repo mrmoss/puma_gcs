@@ -7,11 +7,13 @@
 #include "msl/string_util.hpp"
 
 drone::drone(const unsigned char id,const std::string& serial_name,const unsigned int serial_baud):_id(id),_serial(serial_name,serial_baud),
-	_serial_state(0),_serial_buffer(""),_flags(0x00),_img1_seq(0),_img1_data(""),_img2_angle(0.0),_img2_servo(0.0),_location(0.0,0.0,0.0)
+	_serial_state(0),_serial_buffer(""),_stat_get_flags(0x00),_stat_set_flags(0x01),_img1_seq(0),_img1_data(""),_img2_angle(0.0),_img2_servo(0.0),
+	_img2_size(0),_location(0.0,0.0,0.0)
 {}
 
-drone::drone(const drone& copy):_id(copy._id),_serial(copy._serial),_serial_state(copy._serial_state),_serial_buffer(copy._serial_buffer),_flags(copy._flags),
-	_img1_seq(copy._img1_seq),_img1_data(copy._img1_data),_img2_angle(copy._img2_angle),_img2_servo(copy._img2_servo),_location(copy._location)
+drone::drone(const drone& copy):_id(copy._id),_serial(copy._serial),_serial_state(copy._serial_state),_serial_buffer(copy._serial_buffer),
+	_stat_get_flags(copy._stat_get_flags),_stat_set_flags(copy._stat_set_flags),_img1_seq(copy._img1_seq),_img1_data(copy._img1_data),
+	_img2_angle(copy._img2_angle),_img2_servo(copy._img2_servo),_img2_size(copy._img2_size),_location(copy._location)
 {}
 
 drone& drone::operator=(const drone& copy)
@@ -22,11 +24,13 @@ drone& drone::operator=(const drone& copy)
 		_serial=copy._serial;
 		_serial_state=copy._serial_state;
 		_serial_buffer=copy._serial_buffer;
-		_flags=copy._flags;
+		_stat_get_flags=copy._stat_get_flags;
+		_stat_set_flags=copy._stat_set_flags;
 		_img1_seq=copy._img1_seq;
 		_img1_data=copy._img1_data;
 		_img2_angle=copy._img2_angle;
 		_img2_servo=copy._img2_servo;
+		_img2_size=copy._img2_size;
 		_location=copy._location;
 	}
 
@@ -42,7 +46,7 @@ void drone::close()
 {
 	_serial.close();
 }
-#include <iostream>
+
 void drone::update()
 {
 	if(good())
@@ -51,76 +55,104 @@ void drone::update()
 
 		while(_serial.available()>0&&_serial.read(&byte,1)==1)
 		{
-			//std::cout<<_serial_state<<std::endl;
-
 			if(_serial_state==0)
 			{
+				_serial_buffer.clear();
+
 				if(byte=='s')
+				{
 					_serial_state=1;
-				else if(byte=='c')
+				}
+				else if(byte=='i')
+				{
 					_serial_state=4;
+				}
 			}
 			else if(_serial_state==1)
 			{
 				if(byte=='t')
+				{
 					_serial_state=2;
+				}
 				else
+				{
 					_serial_state=0;
+				}
 			}
 			else if(_serial_state==2)
 			{
 				if(byte=='a')
+				{
 					_serial_state=3;
+				}
 				else
+				{
 					_serial_state=0;
+				}
 			}
 			else if(_serial_state==3)
 			{
 				if(byte=='t')
+				{
 					_serial_state=7;
+				}
+				else
+				{
+					_serial_state=0;
+				}
 			}
 			else if(_serial_state==4)
 			{
-				if(byte=='a')
+				if(byte=='m')
+				{
 					_serial_state=5;
+				}
 				else
+				{
 					_serial_state=0;
+				}
 			}
 			else if(_serial_state==5)
 			{
-				if(byte=='m')
+				if(byte=='g')
+				{
 					_serial_state=6;
+				}
 				else
+				{
 					_serial_state=0;
+				}
 			}
 			else if(_serial_state==6)
 			{
 				if(byte=='1')
-					_serial_state=8;
-				else if(byte=='2')
-					_serial_state=9;
-				else
-					_serial_state=0;
-			}
-			else if(_serial_state==7)
-			{
-				if(_serial_buffer.size()<21)
 				{
-					_serial_buffer+=byte;
+					_serial_state=8;
+				}
+				else if(byte=='2')
+				{
+					_serial_state=9;
 				}
 				else
 				{
-					stat_set(_serial_buffer);
+					_serial_state=0;
+				}
+			}
+			else if(_serial_state==7)
+			{
+				_serial_buffer+=byte;
+
+				if(_serial_buffer.size()>=21)
+				{
+					stat_update(_serial_buffer);
 					_serial_state=0;
 				}
 			}
 			else if(_serial_state==8)
 			{
-				if(_serial_buffer.size()<5||(_serial_buffer.size()>=5&&_serial_buffer.size()-5<static_cast<unsigned int>(*(char*)(_serial_buffer.c_str()+5))))
-				{
-					_serial_buffer+=byte;
-				}
-				else
+				_serial_buffer+=byte;
+
+				if(_serial_buffer.size()>=static_cast<unsigned int>(*(char*)(_serial_buffer.c_str()+4))+5)
 				{
 					img1_add_block(_serial_buffer);
 					_serial_state=0;
@@ -128,11 +160,9 @@ void drone::update()
 			}
 			else if(_serial_state==9)
 			{
-				if(_serial_buffer.size()<12)
-				{
-					_serial_buffer+=byte;
-				}
-				else
+				_serial_buffer+=byte;
+
+				if(_serial_buffer.size()>=14)
 				{
 					img2_add_location(_serial_buffer);
 					_serial_state=0;
@@ -152,86 +182,64 @@ bool drone::good() const
 	return _serial.good();
 }
 
-bool drone::stat_set(const std::string& packet)
+char drone::stat_get() const
 {
-	std::cout<<packet.size()<<std::endl;
-
-	if(packet.size()==21)
-	{
-		_flags=packet[0];
-		_img2_angle=*(float*)(packet.c_str()+1);
-		_img2_servo=*(float*)(packet.c_str()+5);
-		_location.lat=*(float*)(packet.c_str()+9);
-		_location.lng=*(float*)(packet.c_str()+13);
-		_location.alt=*(float*)(packet.c_str()+17);
-
-		std::cout<<"_flags\t"<<(unsigned int)_flags<<std::endl;
-		std::cout<<"_img2_angle\t"<<_img2_angle<<std::endl;
-		std::cout<<"_img2_servo\t"<<_img2_servo<<std::endl;
-		std::cout<<"lat\t"<<_location.lat<<std::endl;
-		std::cout<<"lng\t"<<_location.lng<<std::endl;
-		std::cout<<"alt\t"<<_location.alt<<std::endl;
-
-		return true;
-	}
-
-	return false;
+	return _stat_set_flags;
 }
 
-bool drone::img1_add_block(const std::string& packet)
+void drone::stat_set(const char flags)
 {
-	if(packet.size()>=5)
-	{
-		if(*(short*)(packet.c_str())==_img1_seq)
-		{
-			_img1_data+=(packet.c_str()+5);
+	_stat_set_flags=flags;
+	_serial<<"stat"<<_stat_set_flags;
+}
 
-			if(_img1_data.size()==static_cast<unsigned int>(*(short*)(packet.c_str()+2)))
+void drone::stat_update(const std::string& packet)
+{
+	_stat_get_flags=packet[0];
+	_img2_angle=*(float*)(packet.c_str()+1);
+	_img2_servo=*(float*)(packet.c_str()+5);
+	_location.lat=*(float*)(packet.c_str()+9);
+	_location.lng=*(float*)(packet.c_str()+13);
+	_location.alt=*(float*)(packet.c_str()+17);
+}
+
+void drone::img1_add_block(const std::string& packet)
+{
+	if(*(short*)(packet.c_str())==_img1_seq)
+	{
+		++_img1_seq;
+		_img1_data+=std::string(packet.c_str()+5,static_cast<unsigned int>(*(char*)(_serial_buffer.c_str()+4)));
+
+		if(_img1_data.size()>=static_cast<unsigned int>(*(short*)(packet.c_str()+2)))
+		{
+			std::string jpeg_footer="";
+			jpeg_footer+=255;
+			jpeg_footer+=217;
+			_img1_seq=0;
+
+			if(msl::ends_with(_img1_data,jpeg_footer))
 			{
-				std::string jpeg_footer="";
-				jpeg_footer+=255;
-				jpeg_footer+=217;
+				std::string id_string=msl::to_string(static_cast<unsigned int>(_id));
 
-				if(msl::ends_with(_img1_data,jpeg_footer))
-				{
-					std::string id_string=msl::to_string(static_cast<unsigned int>(_id));
+				while(id_string.size()<3)
+					id_string.insert(0,"0");
 
-					while(id_string.size()<3)
-						id_string.insert(0,"0");
-
-					std::string seq_string=msl::to_string(_img1_seq);
-
-					while(seq_string.size()<3)
-						seq_string.insert(0,"0");
-
-					std::string filename="web/drone/img_"+id_string+"_"+seq_string+".jpg";
-					msl::string_to_file(_img1_data,filename);
-
-					++_img1_seq;
-					_img1_data.clear();
-				}
+				std::string filename="web/drone/img_"+id_string+".jpg";
+				msl::string_to_file(_img1_data,filename);
+				_img1_data.clear();
 			}
-
-			return true;
-		}
-		else
-		{
-			_img1_seq=*(short*)(packet.c_str());
-			_img1_data.clear();
 		}
 	}
-
-	return false;
+	else
+	{
+		_img1_seq=0;
+		_img1_data.clear();
+	}
 }
 
-bool drone::img2_add_location(const std::string& packet)
+void drone::img2_add_location(const std::string& packet)
 {
-	if(packet.size()==12)
-	{
-		location temp(*(float*)(packet.c_str()),*(float*)(packet.c_str()+4),*(float*)(packet.c_str()+8));
-		_img2_locations.push_back(temp);
-		return true;
-	}
-
-	return false;
+	_img2_size=*(short*)(packet.c_str());
+	location temp(*(float*)(packet.c_str()+2),*(float*)(packet.c_str()+6),*(float*)(packet.c_str()+10));
+	_img2_locations[_img2_size]=temp;
 }
