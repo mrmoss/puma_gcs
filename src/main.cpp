@@ -14,6 +14,9 @@
 //IO Stream Header
 #include <iostream>
 
+//JSON Header
+#include "msl/json.hpp"
+
 //Location Header
 #include "location.hpp"
 
@@ -52,7 +55,23 @@ void service_client(msl::socket& client,const std::string& message);
 int main()
 {
 	//Create a Drone
-	drones.push_back(drone(1,"/dev/ttyUSB1",57600));
+	drones.push_back(drone(1,"/dev/ttyACM0",57600));
+
+	//FOR TESTING SERVER TO WEB TX
+	/*std::string temp_packet_test="";
+	temp_packet_test+=(char)0x01;
+	temp_packet_test+=(char)0x00;
+	float temp_lat_test=0.123;
+	float temp_lng_test=0.456;
+	float temp_alt_test=0.789;
+	for(unsigned int ii=0;ii<4;++ii)
+		temp_packet_test+=*(char*)((&temp_lat_test)+ii);
+	for(unsigned int ii=0;ii<4;++ii)
+		temp_packet_test+=*(char*)((&temp_lng_test)+ii);
+	for(unsigned int ii=0;ii<4;++ii)
+		temp_packet_test+=*(char*)((&temp_alt_test)+ii);
+
+	drones[0].img2_add_position(temp_packet_test);*/
 
 	//Connect and Check Drones
 	for(unsigned int ii=0;ii<drones.size();++ii)
@@ -143,7 +162,7 @@ int main()
 		}
 
 		//Give OS a Break
-		//usleep(0);
+		usleep(0);
 	}
 
 	//Call Me Plz T_T
@@ -189,46 +208,90 @@ void service_client(msl::socket& client,const std::string& message)
 			bool parsed_id=(command_parser>>request);
 			int uav_id=msl::to_int(request);
 
-			//Send Everything
-			if(!parsed_id)
+			//Find the Drone
+			unsigned int uav_index=-1;
+
+			for(unsigned int ii=0;ii<drones.size();++ii)
 			{
-				std::cout<<request<<std::endl;
+				if(drones[ii].id()==uav_id)
+				{
+					uav_index=ii;
+					break;
+				}
 			}
 
-			//Check for Valid ID (1-255, 0 is invalid!)
-			else if(uav_id>0&&uav_id<256)
+			//Send Everything
+			if(!parsed_id)
+				client<<msl::http_pack_string("Not implemented yet!","text/plain");
+
+			//Check for Valid ID (1-255, 0 is invalid!) and Valid Index (> -1)
+			else if(uav_id>0&&uav_id<256&&uav_index!=static_cast<unsigned int>(-1))
 			{
+				//Make UAV JSON Object
+				msl::json uav_json;
+				msl::json uav_json_stat;
+					msl::json uav_json_position;
+						uav_json_position.set("lat",drones[uav_index].position().lat);
+						uav_json_position.set("lng",drones[uav_index].position().lng);
+						uav_json_position.set("alt",drones[uav_index].position().alt);
+					uav_json_stat.set("pos",uav_json_position.str());
+					msl::json uav_json_radio;
+						uav_json_radio.set("io",drones[uav_index].stat_get()&1);
+						uav_json_radio.set("quality",100);
+					uav_json_stat.set("radio",uav_json_radio.str());
+					msl::json uav_json_camera;
+						uav_json_camera.set("io",drones[uav_index].stat_get()&2);
+						uav_json_camera.set("debug","ok");
+						uav_json_camera.set("angle",drones[uav_index].img2_angle());
+						uav_json_camera.set("servo",drones[uav_index].img2_servo());
+					uav_json_stat.set("camera",uav_json_camera.str());
+				msl::json uav_json_img;
+					uav_json_img.set("size",drones[uav_index].img2_map().size());
+
+					for(std::map<short,location>::const_iterator iter=drones[uav_index].img2_map().begin();iter!=drones[uav_index].img2_map().end();++iter)
+					{
+						msl::json uav_json_img_num;
+							uav_json_img_num.set("src","test");
+							msl::json uav_json_loc;
+								uav_json_loc.set("lat",msl::to_string(iter->second.lat));
+								uav_json_loc.set("lng",msl::to_string(iter->second.lng));
+								uav_json_loc.set("alt",msl::to_string(iter->second.alt));
+							uav_json_img_num.set("pos",uav_json_loc.str());
+						uav_json_img.set(msl::to_string(iter->first),uav_json_img_num.str());
+					}
+
+				uav_json.set("stat",uav_json_stat.str());
+				uav_json.set("img",uav_json_img.str());
+
 				//Send Whole UAV Object
 				if(!(command_parser>>request))
-				{
-					std::cout<<request<<std::endl;
-				}
+					client<<msl::http_pack_string(uav_json.str(),"text/plain");
 
 				//Status Request
 				else if(request=="stat")
 				{
 					//Send Whole Status Object
 					if(!(command_parser>>request))
-					{
-						std::cout<<request<<std::endl;
-					}
+						client<<msl::http_pack_string(uav_json.get("stat"),"text/plain");
 
-					//Send Current Lattitude
-					else if(request=="lat")
+					//Position Request
+					else if(request=="pos")
 					{
-						std::cout<<request<<std::endl;
-					}
+						//Send Whole Position Object
+						if(!(command_parser>>request))
+							client<<msl::http_pack_string(uav_json_stat.get("pos"),"text/plain");
 
-					//Send Current Longitude
-					else if(request=="lng")
-					{
-						std::cout<<request<<std::endl;
-					}
+						//Send Lattitude
+						else if(request=="lat")
+							client<<msl::http_pack_string(uav_json_position.get("lat"),"text/plain");
 
-					//Send Current Altitude
-					else if(request=="alt")
-					{
-						std::cout<<request<<std::endl;
+						//Send Longitude
+						else if(request=="lng")
+							client<<msl::http_pack_string(uav_json_position.get("lng"),"text/plain");
+
+						//Send Altitude
+						else if(request=="alt")
+							client<<msl::http_pack_string(uav_json_position.get("alt"),"text/plain");
 					}
 
 					//Radio Request
@@ -236,40 +299,28 @@ void service_client(msl::socket& client,const std::string& message)
 					{
 						//Send Whole Radio Object
 						if(!(command_parser>>request))
-						{
-							std::cout<<request<<std::endl;
-						}
+							client<<msl::http_pack_string(uav_json_radio.str(),"text/plain");
 
 						//IO Request
 						else if(request=="io")
 						{
 							//Send Current Radio IO State
 							if(!(command_parser>>request))
-							{
-								std::cout<<request<<" get"<<std::endl;
-							}
+								client<<msl::http_pack_string(uav_json_radio.get("io"),"text/plain");
 
 							//Set Current Radio IO State
 							else
 							{
-								for(unsigned int ii=0;ii<drones.size();++ii)
-								{
-									if(drones[ii].id()==uav_id)
-									{
-										if(msl::to_int(request)==0)
-											drones[ii].stat_set(drones[ii].stat_get()&(~1));
-										else
-											drones[ii].stat_set(drones[ii].stat_get()|1);
-									}
-								}
+								if(msl::to_int(request)==0)
+									drones[uav_index].stat_set(drones[uav_index].stat_get()&(~1));
+								else
+									drones[uav_index].stat_set(drones[uav_index].stat_get()|1);
 							}
 						}
 
 						//Send Radio Quality
 						else if(request=="quality")
-						{
-							std::cout<<request<<std::endl;
-						}
+							client<<msl::http_pack_string(uav_json_radio.get("quality"),"text/plain");
 					}
 
 					//Camera Request
@@ -277,52 +328,36 @@ void service_client(msl::socket& client,const std::string& message)
 					{
 						//Send Whole Camera Object
 						if(!(command_parser>>request))
-						{
-							std::cout<<request<<std::endl;
-						}
+							client<<msl::http_pack_string(uav_json_camera.str(),"text/plain");
 
 						//IO Request
 						else if(request=="io")
 						{
 							//Send Current Camera IO State
 							if(!(command_parser>>request))
-							{
-								std::cout<<request<<" get"<<std::endl;
-							}
+								client<<msl::http_pack_string(uav_json_camera.get("io"),"text/plain");
 
 							//Set Current Camera IO State
 							else
 							{
-								for(unsigned int ii=0;ii<drones.size();++ii)
-								{
-									if(drones[ii].id()==uav_id)
-									{
-										if(msl::to_int(request)==0)
-											drones[ii].stat_set(drones[ii].stat_get()&(~2));
-										else
-											drones[ii].stat_set(drones[ii].stat_get()|2);
-									}
-								}
+								if(msl::to_int(request)==0)
+									drones[uav_index].stat_set(drones[uav_index].stat_get()&(~2));
+								else
+									drones[uav_index].stat_set(drones[uav_index].stat_get()|2);
 							}
 						}
 
 						//Send Camera Debug
 						else if(request=="debug")
-						{
-							std::cout<<request<<std::endl;
-						}
+							client<<msl::http_pack_string(uav_json_camera.get("debug"),"text/plain");
 
 						//Send Camera Angle
 						else if(request=="angle")
-						{
-							std::cout<<request<<std::endl;
-						}
+							client<<msl::http_pack_string(uav_json_camera.get("angle"),"text/plain");
 
 						//Send Camera Servo Angle
 						else if(request=="servo")
-						{
-							std::cout<<request<<std::endl;
-						}
+							client<<msl::http_pack_string(uav_json_camera.get("servo"),"text/plain");
 					}
 				}
 
@@ -331,53 +366,52 @@ void service_client(msl::socket& client,const std::string& message)
 				{
 					//Parse Image Number
 					bool parsed=(command_parser>>request);
-					int uav_img=msl::to_int(request);
+					std::string uav_img=request;
 
 					//Send Whole Image Object
 					if(!parsed)
-					{
-						std::cout<<request<<std::endl;
-					}
+						client<<msl::http_pack_string(uav_json_img.str(),"text/plain");
 
 					//Send Total Number of Images
 					else if(request=="size")
-					{
-						std::cout<<request<<std::endl;
-					}
+						client<<msl::http_pack_string(uav_json_img.get("size"),"text/plain");
 
 					//Check for Valid Image Number (1-32676, 0 is invalid!)
-					else if(uav_img>0)
+					else if(msl::to_int(uav_img)>0)
 					{
+						//Get Image Number JSON Object
+						msl::json uav_json_img_number(uav_json_img.get(uav_img));
 
 						//Send Whole Image Number Object
 						if(!(command_parser>>request))
+							client<<msl::http_pack_string(uav_json_img.get(uav_img),"text/plain");
+
+						//Position Request
+						else if(request=="pos")
 						{
-							std::cout<<request<<std::endl;
+							//Get Position JSON Object
+							msl::json uav_json_img_number_pos(uav_json_img_number.get("pos"));
+
+							//Send Whole Image Position Object
+							if(!(command_parser>>request))
+								client<<msl::http_pack_string(uav_json_img_number_pos.str(),"text/plain");
+
+							//Send Image Lattitude
+							else if(request=="lat")
+								client<<msl::http_pack_string(uav_json_img_number_pos.get("lat"),"text/plain");
+
+							//Send Image Longitude
+							else if(request=="lng")
+								client<<msl::http_pack_string(uav_json_img_number_pos.get("lng"),"text/plain");
+
+							//Send Image Altitude
+							else if(request=="alt")
+								client<<msl::http_pack_string(uav_json_img_number_pos.get("alt"),"text/plain");
 						}
 
-						//Send Image Source
+						//Source Request
 						else if(request=="src")
-						{
-							std::cout<<request<<std::endl;
-						}
-
-						//Send Image Lattitude
-						else if(request=="lat")
-						{
-							std::cout<<request<<std::endl;
-						}
-
-						//Send Image Longitude
-						else if(request=="lng")
-						{
-							std::cout<<request<<std::endl;
-						}
-
-						//Send Image Altitude
-						else if(request=="alt")
-						{
-							std::cout<<request<<std::endl;
-						}
+							client<<msl::http_pack_string(uav_json_img_number.get("src"),"text/plain");
 					}
 				}
 			}

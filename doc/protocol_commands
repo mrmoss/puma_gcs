@@ -4,9 +4,10 @@ Client to Server
 /uav								JSON				r
 	/id								byte				r
 		/stat						JSON				r
-			/lat					float				r
-			/lng					float				r
-			/alt					float				r
+			/pos					JSON				r
+				/lat				float				r
+				/lng				float				r
+				/alt				float				r
 			/radio					JSON				r
 				/io					bool				w/r
 				/quality			char				r
@@ -19,9 +20,10 @@ Client to Server
 			/size					short				r
 			/#NUM					JSON				r
 				/src				string				r
-				/lat				float				r
-				/lng				float				r
-				/alt				float				r
+				/pos				JSON				r
+					/lat			float				r
+					/lng			float				r
+					/alt			float				r
 			...
 	...
 

@@ -8,12 +8,12 @@
 
 drone::drone(const unsigned char id,const std::string& serial_name,const unsigned int serial_baud):_id(id),_serial(serial_name,serial_baud),
 	_serial_state(0),_serial_buffer(""),_stat_get_flags(0x00),_stat_set_flags(0x01),_img1_seq(0),_img1_data(""),_img2_angle(0.0),_img2_servo(0.0),
-	_img2_size(0),_location(0.0,0.0,0.0)
+	_img2_size(0),_position(0.0,0.0,0.0)
 {}
 
 drone::drone(const drone& copy):_id(copy._id),_serial(copy._serial),_serial_state(copy._serial_state),_serial_buffer(copy._serial_buffer),
 	_stat_get_flags(copy._stat_get_flags),_stat_set_flags(copy._stat_set_flags),_img1_seq(copy._img1_seq),_img1_data(copy._img1_data),
-	_img2_angle(copy._img2_angle),_img2_servo(copy._img2_servo),_img2_size(copy._img2_size),_location(copy._location)
+	_img2_angle(copy._img2_angle),_img2_servo(copy._img2_servo),_img2_size(copy._img2_size),_position(copy._position)
 {}
 
 drone& drone::operator=(const drone& copy)
@@ -31,7 +31,7 @@ drone& drone::operator=(const drone& copy)
 		_img2_angle=copy._img2_angle;
 		_img2_servo=copy._img2_servo;
 		_img2_size=copy._img2_size;
-		_location=copy._location;
+		_position=copy._position;
 	}
 
 	return *this;
@@ -164,7 +164,7 @@ void drone::update()
 
 				if(_serial_buffer.size()>=14)
 				{
-					img2_add_location(_serial_buffer);
+					img2_add_position(_serial_buffer);
 					_serial_state=0;
 				}
 			}
@@ -193,14 +193,49 @@ void drone::stat_set(const char flags)
 	_serial<<"stat"<<_stat_set_flags;
 }
 
+location drone::position() const
+{
+	return _position;
+}
+
+char drone::stat_flags() const
+{
+	return _stat_get_flags;
+}
+
+float drone::img2_angle() const
+{
+	return _img2_angle;
+}
+
+float drone::img2_servo() const
+{
+	return _img2_servo;
+}
+
+short drone::img2_size() const
+{
+	return _img2_size;
+}
+
+std::map<short,location>& drone::img2_map()
+{
+	return _img2_positions;
+}
+
+const std::map<short,location>& drone::img2_map() const
+{
+	return _img2_positions;
+}
+
 void drone::stat_update(const std::string& packet)
 {
 	_stat_get_flags=packet[0];
 	_img2_angle=*(float*)(packet.c_str()+1);
 	_img2_servo=*(float*)(packet.c_str()+5);
-	_location.lat=*(float*)(packet.c_str()+9);
-	_location.lng=*(float*)(packet.c_str()+13);
-	_location.alt=*(float*)(packet.c_str()+17);
+	_position.lat=*(float*)(packet.c_str()+9);
+	_position.lng=*(float*)(packet.c_str()+13);
+	_position.alt=*(float*)(packet.c_str()+17);
 }
 
 void drone::img1_add_block(const std::string& packet)
@@ -237,9 +272,9 @@ void drone::img1_add_block(const std::string& packet)
 	}
 }
 
-void drone::img2_add_location(const std::string& packet)
+void drone::img2_add_position(const std::string& packet)
 {
 	_img2_size=*(short*)(packet.c_str());
 	location temp(*(float*)(packet.c_str()+2),*(float*)(packet.c_str()+6),*(float*)(packet.c_str()+10));
-	_img2_locations[_img2_size]=temp;
+	_img2_positions[_img2_size]=temp;
 }

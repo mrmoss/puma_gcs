@@ -50,11 +50,21 @@ class drone
 		//Stat Mutator
 		void stat_set(const char flags);
 
-	private:
+		//Position Accessor
+		location position() const;
+
+		char stat_flags() const;
+		float img2_angle() const;
+		float img2_servo() const;
+		short img2_size() const;
+		std::map<short,location>& img2_map();
+		const std::map<short,location>& img2_map() const;
+
+	//private:
 		//Member Functions
 		void stat_update(const std::string& packet);
 		void img1_add_block(const std::string& packet);
-		void img2_add_location(const std::string& packet);
+		void img2_add_position(const std::string& packet);
 
 		//Member Variables
 		unsigned char _id;
@@ -68,8 +78,8 @@ class drone
 		float _img2_angle;
 		float _img2_servo;
 		short _img2_size;
-		location _location;
-		std::map<short,location> _img2_locations;
+		location _position;
+		std::map<short,location> _img2_positions;
 };
 
 #endif
