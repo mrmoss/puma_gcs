@@ -55,14 +55,14 @@ void service_client(msl::socket& client,const std::string& message);
 int main()
 {
 	//Create a Drone
-	drones.push_back(drone(1,"/dev/ttyACM0",57600));
+	drones.push_back(drone(1,"/dev/ttyUSB1",57600));
 
-	//FOR TESTING SERVER TO WEB TX
-	/*std::string temp_packet_test="";
+	/*//FOR TESTING SERVER TO WEB TX
+	std::string temp_packet_test="";
 	temp_packet_test+=(char)0x01;
 	temp_packet_test+=(char)0x00;
-	float temp_lat_test=0.123;
-	float temp_lng_test=0.456;
+	float temp_lat_test=64.85614;
+	float temp_lng_test=-147.81951;
 	float temp_alt_test=0.789;
 	for(unsigned int ii=0;ii<4;++ii)
 		temp_packet_test+=*(char*)((&temp_lat_test)+ii);
@@ -248,10 +248,14 @@ void service_client(msl::socket& client,const std::string& message)
 				msl::json uav_json_img;
 					uav_json_img.set("size",drones[uav_index].img2_map().size());
 
+					std::string preview_id_string=msl::to_string(uav_id);
+					while(preview_id_string.size()<3)
+						preview_id_string.insert(0,"0");
+					uav_json_img.set("preview","drone/preview_"+preview_id_string+".jpg");
+
 					for(std::map<short,location>::const_iterator iter=drones[uav_index].img2_map().begin();iter!=drones[uav_index].img2_map().end();++iter)
 					{
 						msl::json uav_json_img_num;
-							uav_json_img_num.set("src","test");
 							msl::json uav_json_loc;
 								uav_json_loc.set("lat",msl::to_string(iter->second.lat));
 								uav_json_loc.set("lng",msl::to_string(iter->second.lng));

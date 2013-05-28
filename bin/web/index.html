@@ -1,8 +1,164 @@
-<html>
+<html style="width:100%;height:100%;margin:0;">
 	<head>
-		<title>Your here!</title>
+		<script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?sensor=false"></script>
+		<script type="text/javascript">
+			//FAIRBANKS 64.85707646953384,-147.82556247711182
+
+			var uav;
+			var map;
+			var uav_markers=new Array();
+
+			function initialize()
+			{
+				try
+				{
+					var start_lat=64.85614;
+					var start_lng=-147.81951;
+					//document.getElementById("ui_pos_lat").value=start_lat;
+					//document.getElementById("ui_pos_lng").value=start_lng;
+
+					var map_settings=
+					{
+						zoom:20,
+						center:new google.maps.LatLng(start_lat,start_lng),
+						mapTypeId:google.maps.MapTypeId.HYBRID,
+						disableDoubleClickZoom:false,
+						scrollwheel:true,
+						keyboardShortcuts:false,
+						disableDefaultUI:true
+					};
+
+					map=new google.maps.Map(document.getElementById("map"),map_settings);
+					google.maps.event.addListener(map,"mousemove",map_position);
+					google.maps.event.addListener(map,"mousedown",map_position);
+					setInterval(server_update,1800);
+				}
+				catch(e)
+				{}
+			}
+
+			function map_position(event)
+			{
+				//document.getElementById("ui_pos_lat").value=event.latLng.lat().toFixed(5).toString();
+				//document.getElementById("ui_pos_lng").value=event.latLng.lng().toFixed(5).toString();
+			}
+
+			function send_command(command,onready)
+			{
+				var xmlhttp=new XMLHttpRequest();
+
+				if(onready)
+					xmlhttp.onreadystatechange=function()
+					{
+						if(xmlhttp.readyState==4&&xmlhttp.status==200)
+							onready(xmlhttp.responseText);
+					}
+
+				xmlhttp.open("GET",encodeURIComponent(command),true);
+				xmlhttp.send();
+			}
+
+			function uav_update(json_str)
+			{
+				try
+				{
+					uav=JSON.parse(json_str.replace(/'/g, "\""));
+
+					if(uav)
+					{
+						document.getElementById("ui_uav_pos_lat").value=uav.stat.pos.lat;
+						document.getElementById("ui_uav_pos_lng").value=uav.stat.pos.lng;
+						document.getElementById("ui_uav_pos_alt").value=uav.stat.pos.alt;
+						document.getElementById("ui_uav_pics_taken").value=uav.img.size;
+
+						if(uav.stat.radio.io=="0")
+							document.getElementById("ui_uav_radio").value="off";
+						else
+							document.getElementById("ui_uav_radio").value="on";
+
+						if(uav.stat.camera.io=="0")
+							document.getElementById("ui_uav_camera").value="off";
+						else
+							document.getElementById("ui_uav_camera").value="on";
+
+						for(var ii=0;ii<uav_markers.length;++ii)
+						{
+							google.maps.event.clearInstanceListeners(uav_markers[ii]);
+							uav_markers[ii].setMap(null);
+						}
+
+						uav_markers.length=0;
+
+						var size=parseInt(uav.img.size);
+						var count=0;
+
+						while(uav_markers.length<size&&count<10)
+						{
+							if(uav.img[count.toString()])
+							{
+								uav_markers.push(new google.maps.Marker({map:map,clickable:false,draggable:false,animation:null,position:new google.maps.LatLng(uav.img[count.toString()].pos.lat,uav.img[count.toString()].pos.lng)}));
+							}
+
+							++count;
+						}
+					}
+				}
+				catch(e)
+				{}
+			}
+
+			function server_update()
+			{
+				send_command("uav/1/",uav_update);
+			}
+
+			function uav_update_radio()
+			{
+				if(document.getElementById("ui_uav_radio").value=="off")
+					send_command("uav/1/stat/radio/io/0");
+				else
+					send_command("uav/1/stat/radio/io/1");
+			}
+
+			function uav_update_camera()
+			{
+				if(document.getElementById("ui_uav_camera").value=="off")
+					send_command("uav/1/stat/camera/io/0",uav_update);
+				else
+					send_command("uav/1/stat/camera/io/1",uav_update);
+			}
+		</script>
 	</head>
-	<body>
-		<center>Now go away...</center>
+	<body style="width:100%;height:100%;margin:0;" onload="initialize();">
+		<title>Puma GCS</title>
+		<table style="width:100%;height:100%;margin:0;">
+			<tr>
+				<td style="width:100%;height:32px;">
+					<!--
+					lat <input type="text" id="ui_pos_lat" style="width:80px;"/>
+					lng <input type="text" id="ui_pos_lng" style="width:80px;"/>
+					-->
+					lat <input type="text" id="ui_uav_pos_lat" style="width:80px;" value="undefined" readonly/>
+					lng <input type="text" id="ui_uav_pos_lng" style="width:80px;" value="undefined" readonly/>
+					alt <input type="text" id="ui_uav_pos_alt" style="width:80px;" value="undefined" readonly/>
+					pictures taken <input type="text" id="ui_uav_pics_taken" style="width:80px;" value="undefined" readonly/>
+					radio
+						<select id="ui_uav_radio" onchange="uav_update_radio();">
+							<option selected>on</option>
+							<option>off</option>
+						</select>
+					camera
+						<select id="ui_uav_camera" onchange="uav_update_camera();">
+							<option>on</option>
+							<option selected>off</option>
+						</select>
+				</td>
+			</tr>
+			<tr>
+				<td style="width:100%;height:100%;">
+					<div id="map" style="width:100%;height:100%;"></div>
+				</td>
+			</tr>
+		</table>
 	</body>
 </html>

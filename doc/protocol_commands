@@ -18,8 +18,8 @@ Client to Server
 				/servo				short				r
 		/img						JSON				r
 			/size					short				r
+			/preview				string				r
 			/#NUM					JSON				r
-				/src				string				r
 				/pos				JSON				r
 					/lat			float				r
 					/lng			float				r

@@ -259,7 +259,7 @@ void drone::img1_add_block(const std::string& packet)
 				while(id_string.size()<3)
 					id_string.insert(0,"0");
 
-				std::string filename="web/drone/img_"+id_string+".jpg";
+				std::string filename="web/drone/preview_"+id_string+".jpg";
 				msl::string_to_file(_img1_data,filename);
 				_img1_data.clear();
 			}
