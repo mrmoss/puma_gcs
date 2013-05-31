@@ -6,6 +6,8 @@
 //String Utility Header
 #include "msl/string_util.hpp"
 
+#include <iostream>
+
 drone::drone(const unsigned char id,const std::string& serial_name,const unsigned int serial_baud):_id(id),_serial(serial_name,serial_baud),
 	_serial_state(0),_serial_buffer(""),_stat_get_flags(0x00),_stat_set_flags(0x01),_img1_seq(0),_img1_data(""),_img2_angle(0.0),_img2_servo(0.0),
 	_img2_size(0),_position(0.0,0.0,0.0)
@@ -190,7 +192,7 @@ char drone::stat_get() const
 void drone::stat_set(const char flags)
 {
 	_stat_set_flags=flags;
-	_serial<<"stat"<<_stat_set_flags;
+	_serial<<"cmnd"<<_stat_set_flags;
 }
 
 location drone::position() const
@@ -230,20 +232,27 @@ const std::map<short,location>& drone::img2_map() const
 
 void drone::stat_update(const std::string& packet)
 {
+	std::cout<<"stat update!"<<std::endl;
 	_stat_get_flags=packet[0];
 	_img2_angle=*(float*)(packet.c_str()+1);
 	_img2_servo=*(float*)(packet.c_str()+5);
 	_position.lat=*(float*)(packet.c_str()+9);
 	_position.lng=*(float*)(packet.c_str()+13);
 	_position.alt=*(float*)(packet.c_str()+17);
+
+	if((_stat_get_flags&1)==1)
+		_stat_set_flags|=4;
+	else
+		_stat_set_flags&=(~4);
 }
 
 void drone::img1_add_block(const std::string& packet)
 {
-	if(*(short*)(packet.c_str())==_img1_seq)
+	std::cout<<"img1 add block!"<<std::endl;
+	if(*(short*)(packet.c_str())==_img1_seq&&static_cast<unsigned int>(*(char*)(_serial_buffer.c_str()+4))<=32)
 	{
 		++_img1_seq;
-		_img1_data+=std::string(packet.c_str()+5,static_cast<unsigned int>(*(char*)(_serial_buffer.c_str()+4)));
+		_img1_data+=packet.substr(5,static_cast<unsigned int>(*(char*)(_serial_buffer.c_str()+4)));
 
 		if(_img1_data.size()>=static_cast<unsigned int>(*(short*)(packet.c_str()+2)))
 		{
@@ -274,6 +283,7 @@ void drone::img1_add_block(const std::string& packet)
 
 void drone::img2_add_position(const std::string& packet)
 {
+	std::cout<<"img2 add pos!"<<std::endl;
 	_img2_size=*(short*)(packet.c_str());
 	location temp(*(float*)(packet.c_str()+2),*(float*)(packet.c_str()+6),*(float*)(packet.c_str()+10));
 	_img2_positions[_img2_size]=temp;

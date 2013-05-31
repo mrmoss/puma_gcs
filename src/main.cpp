@@ -55,7 +55,7 @@ void service_client(msl::socket& client,const std::string& message);
 int main()
 {
 	//Create a Drone
-	drones.push_back(drone(1,"/dev/ttyUSB1",57600));
+	drones.push_back(drone(1,"/dev/ttyUSB4",57600));
 
 	/*//FOR TESTING SERVER TO WEB TX
 	std::string temp_packet_test="";
@@ -240,7 +240,7 @@ void service_client(msl::socket& client,const std::string& message)
 						uav_json_radio.set("quality",100);
 					uav_json_stat.set("radio",uav_json_radio.str());
 					msl::json uav_json_camera;
-						uav_json_camera.set("io",drones[uav_index].stat_get()&2);
+						uav_json_camera.set("io",drones[uav_index].stat_get()&4);
 						uav_json_camera.set("debug","ok");
 						uav_json_camera.set("angle",drones[uav_index].img2_angle());
 						uav_json_camera.set("servo",drones[uav_index].img2_servo());
@@ -316,9 +316,15 @@ void service_client(msl::socket& client,const std::string& message)
 							else
 							{
 								if(msl::to_int(request)==0)
+								{
 									drones[uav_index].stat_set(drones[uav_index].stat_get()&(~1));
+									std::cout<<"radio off"<<std::endl;
+								}
 								else
+								{
 									drones[uav_index].stat_set(drones[uav_index].stat_get()|1);
+									std::cout<<"radio on"<<std::endl;
+								}
 							}
 						}
 
@@ -345,9 +351,15 @@ void service_client(msl::socket& client,const std::string& message)
 							else
 							{
 								if(msl::to_int(request)==0)
-									drones[uav_index].stat_set(drones[uav_index].stat_get()&(~2));
+								{
+									drones[uav_index].stat_set(drones[uav_index].stat_get()&(~4));
+									std::cout<<"camera off"<<std::endl;
+								}
 								else
-									drones[uav_index].stat_set(drones[uav_index].stat_get()|2);
+								{
+									drones[uav_index].stat_set(drones[uav_index].stat_get()|4);
+									std::cout<<"camera on"<<std::endl;
+								}
 							}
 						}
 
@@ -424,6 +436,11 @@ void service_client(msl::socket& client,const std::string& message)
 		//Web Pages
 		else
 		{
+			//Parse ?'s
+			for(unsigned int ii=0;ii<request.size();++ii)
+				if(request[ii]=='?')
+					request=request.substr(0,ii);
+
 			//Mime Type Variable (Default plain text)
 			std::string mime_type="text/plain";
 
