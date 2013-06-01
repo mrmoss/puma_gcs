@@ -18,6 +18,7 @@ gcs ground_control_station(Serial1,57600);
 float servo_controller_gains[3]={-2.5,0.02,-1.0};
 servo_pid servo_controller(46,servo_controller_gains,1000.0,2000.0);
 
+//Setup Function
 void setup()
 {
   //Setup Debug Serial Port
@@ -30,35 +31,36 @@ void setup()
 
   //Start Servo Controller
   Serial.print("servo.............");
-  servo_controller.setup();
-  servo_controller.target(1500);
+  //servo_controller.setup();
+  //servo_controller.set_target(1500.0);
   Serial.println("passed");
 
   //Start GCS
   Serial.print("gcs...............");
-  ground_control_station.setup();
+  ground_control_station.setup(servo_controller);
   Serial.println("passed");
 
   //Start MPU
-  Serial.print("mpu...............");
+  //Serial.print("mpu...............");
 
-  if(mpu_setup(servo_controller))
-    Serial.println("passed");
-  else
-    Serial.println("failed");
+  //if(mpu_setup(servo_controller))
+    //Serial.println("passed");
+  //else
+   // Serial.println("failed");
 
   //All Done
-  Serial.print("system g2g");
+  Serial.println("system g2g");
 }
 
+//Loop Function
 void loop()
 {
+  //Update Servo Controller
+  //servo_controller.loop(20);
+
   //Update GCS
   ground_control_station.loop();
 
-  //Update Servo Controller
-  servo_controller.loop(5);
-
   //Update MPU
-  mpu_loop();
+  //mpu_loop();
 }

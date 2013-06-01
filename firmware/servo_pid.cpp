@@ -27,20 +27,30 @@ void servo_pid::setup()
 
 void servo_pid::loop(const unsigned int dt)
 {
-  if(millis()-_old_time>dt)
+  if(millis()-_old_time>=dt)
   {
-	_old_time=millis();
-	_pid_error[1]+=_angle_target;
-	clamp(_pid_error[1],-50,50);
-	_pid_error[2]=_angle_target-_pid_error[0];
-	_pid_error[0]=_angle_target;
-	_angle_current+=(_pid_error[0]*_pid_gain[0])+(_pid_error[1]*_pid_gain[1])+(_pid_error[2]*_pid_gain[2]);
-	clamp(_angle_current,1000.0,2000.0);
-	_servo.writeMicroseconds((int)_angle_current);
+    _old_time=millis();
+    _pid_error[1]+=_angle_target;
+    clamp(_pid_error[1],-50,50);
+    _pid_error[2]=_angle_target-_pid_error[0];
+    _pid_error[0]=_angle_target;
+    _angle_current+=(_pid_error[0]*_pid_gain[0])+(_pid_error[1]*_pid_gain[1])+(_pid_error[2]*_pid_gain[2]);
+    clamp(_angle_current,1000.0,2000.0);
+    _servo.writeMicroseconds((int)_angle_current);
   }
 }
 
-void servo_pid::target(const float angle)
+void servo_pid::set_target(const float angle)
 {
   _angle_target=angle;
+}
+
+float servo_pid::current() const
+{
+  return _angle_current;
+}
+
+float servo_pid::target() const
+{
+  return _angle_target;
 }

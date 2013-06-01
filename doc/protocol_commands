@@ -1,6 +1,7 @@
 ================
 Client to Server
 ================
+/size								byte				r
 /uav								JSON				r
 	/id								byte				r
 		/stat						JSON				r
@@ -50,16 +51,16 @@ img2	(tx)
 	lng																					float
 	alt																					float
 
-stat	(rx)
+cmnd	(rx)
 	flags(img2 img1 radio)
 
 =================================
 Server Side Serial Parsing States
 =================================
-0		s/i
-1		t
-2		a
-3		t
+0		c/i
+1		m
+2		n
+3		d
 4		m
 5		g
 6		1/2

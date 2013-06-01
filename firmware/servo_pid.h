@@ -12,7 +12,10 @@ class servo_pid
     void setup();
     void loop(const unsigned int dt);
 
-    void target(const float angle);
+    void set_target(const float angle);
+
+    float current() const;
+    float target() const;
 
   private:
     unsigned int _pin;

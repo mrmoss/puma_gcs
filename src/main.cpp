@@ -55,23 +55,7 @@ void service_client(msl::socket& client,const std::string& message);
 int main()
 {
 	//Create a Drone
-	drones.push_back(drone(1,"/dev/ttyUSB4",57600));
-
-	/*//FOR TESTING SERVER TO WEB TX
-	std::string temp_packet_test="";
-	temp_packet_test+=(char)0x01;
-	temp_packet_test+=(char)0x00;
-	float temp_lat_test=64.85614;
-	float temp_lng_test=-147.81951;
-	float temp_alt_test=0.789;
-	for(unsigned int ii=0;ii<4;++ii)
-		temp_packet_test+=*(char*)((&temp_lat_test)+ii);
-	for(unsigned int ii=0;ii<4;++ii)
-		temp_packet_test+=*(char*)((&temp_lng_test)+ii);
-	for(unsigned int ii=0;ii<4;++ii)
-		temp_packet_test+=*(char*)((&temp_alt_test)+ii);
-
-	drones[0].img2_add_position(temp_packet_test);*/
+	drones.push_back(drone(1,"/dev/ttyUSB1",57600));
 
 	//Connect and Check Drones
 	for(unsigned int ii=0;ii<drones.size();++ii)

@@ -287,4 +287,5 @@ void drone::img2_add_position(const std::string& packet)
 	_img2_size=*(short*)(packet.c_str());
 	location temp(*(float*)(packet.c_str()+2),*(float*)(packet.c_str()+6),*(float*)(packet.c_str()+10));
 	_img2_positions[_img2_size]=temp;
+	_img2_positions.erase(_img2_positions.find(_img2_size+1),_img2_positions.end());
 }
