@@ -55,7 +55,7 @@ void service_client(msl::socket& client,const std::string& message);
 int main()
 {
 	//Create a Drone
-	drones.push_back(drone(1,"/dev/ttyUSB1",57600));
+	drones.push_back(drone(1,"/dev/ttyUSB0",57600));
 
 	//Connect and Check Drones
 	for(unsigned int ii=0;ii<drones.size();++ii)
@@ -224,7 +224,7 @@ void service_client(msl::socket& client,const std::string& message)
 						uav_json_radio.set("quality",100);
 					uav_json_stat.set("radio",uav_json_radio.str());
 					msl::json uav_json_camera;
-						uav_json_camera.set("io",drones[uav_index].stat_get()&4);
+						uav_json_camera.set("io",drones[uav_index].stat_get()&6);
 						uav_json_camera.set("debug","ok");
 						uav_json_camera.set("angle",drones[uav_index].img2_angle());
 						uav_json_camera.set("servo",drones[uav_index].img2_servo());
@@ -336,12 +336,12 @@ void service_client(msl::socket& client,const std::string& message)
 							{
 								if(msl::to_int(request)==0)
 								{
-									drones[uav_index].stat_set(drones[uav_index].stat_get()&(~4));
+									drones[uav_index].stat_set(drones[uav_index].stat_get()&(~6));
 									std::cout<<"camera off"<<std::endl;
 								}
 								else
 								{
-									drones[uav_index].stat_set(drones[uav_index].stat_get()|4);
+									drones[uav_index].stat_set(drones[uav_index].stat_get()|6);
 									std::cout<<"camera on"<<std::endl;
 								}
 							}
