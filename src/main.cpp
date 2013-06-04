@@ -1,105 +1,278 @@
-//Puma GCS Source
-//	Created By:		Steven Kibler and Mike Moss
-//	Modified On:	05/22/2013
-
-//C Standard Library Header
 #include <cstdlib>
-
-//Drone Header
-#include "drone.hpp"
-
-//File Utility Header
 #include "msl/file_util.hpp"
-
-//IO Stream Header
 #include <iostream>
-
-//JSON Header
-#include "msl/json.hpp"
-
-//Location Header
-#include "location.hpp"
-
-//Socket Header
+#include "msl/serial.hpp"
 #include "msl/socket.hpp"
-
-//Socket Utility Header
 #include "msl/socket_util.hpp"
-
-//String Header
 #include <string>
-
-//String Utility Header
 #include "msl/string_util.hpp"
-
-//Time Utility Header
-#include "msl/time_util.hpp"
-
-//Vector Header
 #include <vector>
 
-//TTD
-//		Make socket responses send actual data.
-//		Create serial send functions.
-//		Make better names for drone class members.
-//		Comment everything that isn't commented.
-//		Test out everything.
+char calculate_crc(const std::string& packet)
+{
+	char calc=0x00;
 
-//Global Drone Vector
-std::vector<drone> drones;
+	for(unsigned int ii=0;ii<packet.size();++ii)
+		calc^=packet[ii];
 
-//Service Client Function Declaration
+	return calc;
+}
+
+class uav
+{
+	public:
+		uav(const char id,const std::string serial_port,const unsigned int serial_baud):_id(id),_serial_port(serial_port),_serial_baud(serial_baud),
+			_packet_state(0),_packet_buffer(""),sd(0),jpg(0),nex(0),lat(0.0),lng(0.0),alt(0.0),fix(0),sats(0),course(0.0),speed(0.0)
+		{}
+
+		std::string change_hw(const char id,const bool state)
+		{
+			std::string packet="dat";
+			packet+=id;
+			packet+=static_cast<char>(0x01);
+
+			if(!state)
+				packet+=static_cast<char>(0x00);
+			else
+				packet+=static_cast<char>(0x01);
+
+			packet+=calculate_crc(packet);
+			return packet;
+		}
+
+		bool setup_serial()
+		{
+			_serial=msl::serial(_serial_port,_serial_baud);
+			_serial.connect();
+			return _serial.good();
+		}
+
+		void update_serial()
+		{
+			char read_byte;
+
+			while(_serial.available()>0&&_serial.read(&read_byte,1)==1)
+			{
+				//Get Data Packet
+				if(_packet_state==0&&read_byte=='d')
+				{
+					_packet_buffer+=read_byte;
+					_packet_state=1;
+				}
+				else if(_packet_state==1&&read_byte=='a')
+				{
+					_packet_buffer+=read_byte;
+					_packet_state=2;
+				}
+				else if(_packet_state==2&&read_byte=='t')
+				{
+					_packet_buffer+=read_byte;
+					_packet_state=3;
+				}
+				else if(_packet_state==3||_packet_state==4)
+				{
+					_packet_buffer+=read_byte;
+					++_packet_state;
+				}
+				else if(_packet_state==5)
+				{
+					_packet_buffer+=read_byte;
+
+					if(_packet_buffer.size()==static_cast<unsigned int>(_packet_buffer[4])+5)
+						_packet_state=10;
+				}
+
+				//Get Response Packet
+				else if(_packet_state==0&&read_byte=='r')
+				{
+					_packet_buffer+=read_byte;
+					_packet_state=6;
+				}
+				else if(_packet_state==6&&read_byte=='e')
+				{
+					_packet_buffer+=read_byte;
+					_packet_state=7;
+				}
+				else if(_packet_state==7&&read_byte=='s')
+				{
+					_packet_buffer+=read_byte;
+					_packet_state=8;
+				}
+				else if(_packet_state==8)
+				{
+					_packet_buffer+=read_byte;
+					_packet_state=9;
+				}
+				else if(_packet_state==9)
+				{
+					_packet_buffer+=read_byte;
+
+					if(_packet_buffer.size()==6)
+						_packet_state=10;
+				}
+
+				//CRC Check
+				else if(_packet_state==10)
+				{
+					if(read_byte==calculate_crc(_packet_buffer))
+					{
+						if(msl::starts_with(_packet_buffer,"dat"))
+						{
+							if(_packet_buffer[3]==0)
+							{
+								sd=_packet_buffer[5];
+								jpg=_packet_buffer[6];
+								nex=_packet_buffer[7];
+								lat=*(float*)&_packet_buffer[8];
+								lng=*(float*)&_packet_buffer[12];
+								alt=*(float*)&_packet_buffer[16];
+								fix=_packet_buffer[20];
+								sats=_packet_buffer[21];
+								course=*(float*)&_packet_buffer[22];
+								speed=*(float*)&_packet_buffer[26];
+
+								/*std::cout<<"heartbeat"<<std::endl;
+								std::cout<<"\td\t"<<_packet_buffer[0]<<std::endl;
+								std::cout<<"\ta\t"<<_packet_buffer[1]<<std::endl;
+								std::cout<<"\tt\t"<<_packet_buffer[2]<<std::endl;
+								std::cout<<"\tid\t"<<(int)_packet_buffer[3]<<std::endl;
+								std::cout<<"\tsize\t"<<(int)_packet_buffer[4]<<std::endl;
+								std::cout<<"\tsd\t"<<(int)sd<<std::endl;
+								std::cout<<"\tjpg\t"<<(int)jpg<<std::endl;
+								std::cout<<"\tnex\t"<<(int)nex<<std::endl;
+								std::cout<<"\tlat\t"<<lat<<std::endl;
+								std::cout<<"\tlng\t"<<lng<<std::endl;
+								std::cout<<"\talt\t"<<alt<<std::endl;
+								std::cout<<"\tfix\t"<<(int)fix<<std::endl;
+								std::cout<<"\tsats\t"<<(int)sats<<std::endl;
+								std::cout<<"\tcourse\t"<<course<<std::endl;
+								std::cout<<"\tspeed\t"<<speed<<std::endl;*/
+							}
+
+							else if(_packet_buffer[3]==2)
+							{
+								if(*(short*)&_packet_buffer[5]==_jpg_seq)
+								{
+									++_jpg_seq;
+									_jpg_data+=std::string(_packet_buffer[10],_packet_buffer[9]);
+
+									if(static_cast<short>(_jpg_data.size())==*(short*)&_packet_buffer[7])
+									{
+										std::string filename=msl::to_string(_id);
+										while(filename.size()<3)
+											filename.insert(0,"0");
+
+										msl::string_to_file("jpg_"+filename+".jpg",_jpg_data);
+										_jpg_data="";
+										_jpg_seq=0;
+									}
+								}
+								else
+								{
+									_jpg_data="";
+									_jpg_seq=0;
+								}
+							}
+
+							else
+							{
+								std::cout<<"unknown packet id"<<std::endl;
+							}
+						}
+						/*else if(msl::starts_with(_packet_buffer,"res"))
+						{
+							std::cout<<"response"<<std::endl;
+							std::cout<<"\tr\t"<<_packet_buffer[0]<<std::endl;
+							std::cout<<"\te\t"<<_packet_buffer[1]<<std::endl;
+							std::cout<<"\ts\t"<<_packet_buffer[2]<<std::endl;
+							std::cout<<"\tid\t"<<(int)_packet_buffer[3]<<std::endl;
+							std::cout<<"\tf1\t"<<(int)_packet_buffer[4]<<std::endl;
+							std::cout<<"\tf2\t"<<(int)_packet_buffer[5]<<std::endl;
+						}*/
+						else
+						{
+							std::cout<<"unknown packet header"<<std::endl;
+						}
+					}
+					else
+					{
+						std::cout<<"bad packet"<<std::endl;
+					}
+
+					_packet_state=0;
+					_packet_buffer="";
+				}
+
+				//Garbage
+				else
+				{
+					_packet_state=0;
+					_packet_buffer="";
+				}
+			}
+		}
+
+		char _id;
+		std::string _serial_port;
+		unsigned int _serial_baud;
+		msl::serial _serial;
+		int _packet_state;
+		std::string _packet_buffer;
+		char sd;
+		char jpg;
+		char nex;
+		float lat;
+		float lng;
+		float alt;
+		char fix;
+		char sats;
+		float course;
+		float speed;
+		std::string _jpg_data;
+		short _jpg_seq;
+};
+
 void service_client(msl::socket& client,const std::string& message);
 
-//Main
+std::vector<uav> uavs;
+
 int main()
 {
-	//Create a Drone
-	drones.push_back(drone(1,"/dev/ttyUSB0",57600));
-
-	//Connect and Check Drones
-	for(unsigned int ii=0;ii<drones.size();++ii)
-	{
-		drones[ii].connect();
-
-		std::cout<<"Drone["<<static_cast<unsigned int>(drones[ii].id())<<"] ";
-
-		if(drones[ii].good())
-		{
-			std::cout<<"=)"<<std::endl;
-		}
-		else
-		{
-			std::cout<<"=("<<std::endl;
-			exit(0);
-		}
-	}
-
-	//Create Server
 	msl::socket server("0.0.0.0:8080");
+	std::vector<msl::socket> clients;
+	std::vector<std::string> client_messages;
 	server.create_tcp();
 
-	//Check Server
 	if(server.good())
 	{
-		std::cout<<"Socket =)"<<std::endl;
+		std::cout<<"socket :)"<<std::endl;
 	}
 	else
 	{
-		std::cout<<"Socket =("<<std::endl;
+		std::cout<<"socket :("<<std::endl;
 		exit(0);
 	}
 
-	//Vectors for Clients
-	std::vector<msl::socket> web_clients;
-	std::vector<std::string> web_buffers;
+	uavs.push_back(uav(5,"/dev/ttyUSB0",57600));
 
-	//Be a server...forever...
+	//Took out for testing without a radio...
+	/*for(unsigned int ii=0;ii<uavs.size();++ii)
+	{
+		if(uavs[ii].setup_serial())
+		{
+			std::cout<<"["<<ii<<"] :)"<<std::endl;
+		}
+		else
+		{
+			std::cout<<"["<<ii<<"] :("<<std::endl;
+			exit(0);
+		}
+	}*/
+
 	while(true)
 	{
-		//Update Drones
-		for(unsigned int ii=0;ii<drones.size();++ii)
-			drones[ii].update();
+		for(unsigned int ii=0;ii<uavs.size();++ii)
+			uavs[ii].update_serial();
 
 		//Check for a Connecting Client
 		msl::socket client=server.accept();
@@ -107,30 +280,30 @@ int main()
 		//If Client Connected
 		if(client.good())
 		{
-			web_clients.push_back(client);
-			web_buffers.push_back("");
+			clients.push_back(client);
+			client_messages.push_back("");
 		}
 
 		//Handle Clients
-		for(unsigned int ii=0;ii<web_clients.size();++ii)
+		for(unsigned int ii=0;ii<clients.size();++ii)
 		{
-			//Temp Byte
-			char byte='\n';
-
 			//Service Good Clients
-			if(web_clients[ii].good())
+			if(clients[ii].good())
 			{
+				//Temp
+				char byte='\n';
+
 				//Get a Byte
-				while(web_clients[ii].available()>0&&web_clients[ii].read(&byte,1)==1)
+				if(clients[ii].available()>0&&clients[ii].read(&byte,1)==1)
 				{
 					//Add the Byte to Client Buffer
-					web_buffers[ii]+=byte;
+					client_messages[ii]+=byte;
 
 					//Check for an End Byte
-					if(msl::ends_with(web_buffers[ii],"\r\n\r\n"))
+					if(msl::ends_with(client_messages[ii],"\r\n\r\n"))
 					{
-						service_client(web_clients[ii],web_buffers[ii]);
-						web_buffers[ii].clear();
+						service_client(clients[ii],client_messages[ii]);
+						client_messages[ii].clear();
 					}
 				}
 			}
@@ -138,22 +311,17 @@ int main()
 			//Disconnect Bad Clients
 			else
 			{
-				web_clients[ii].close();
-				web_clients.erase(web_clients.begin()+ii);
-				web_buffers.erase(web_buffers.begin()+ii);
+				clients[ii].close();
+				clients.erase(clients.begin()+ii);
+				client_messages.erase(client_messages.begin()+ii);
 				--ii;
 			}
 		}
-
-		//Give OS a Break
-		usleep(0);
 	}
 
-	//Call Me Plz T_T
 	return 0;
 }
 
-//Service Client Function Definition
 void service_client(msl::socket& client,const std::string& message)
 {
 	//Get Requests
@@ -172,262 +340,82 @@ void service_client(msl::socket& client,const std::string& message)
 
 		//Check for Index
 		if(request=="/")
-			request="/index.html";
+			request+="index.html";
 
-		//Commands
-		if(msl::starts_with(request,"/uav"))
+		//Mime Type Variable (Default plain text)
+		std::string mime_type="text/plain";
+
+		//Commands Check
+		if(msl::starts_with(request,"/&"))
 		{
-			//Change '/'s to ' 's
-			for(unsigned int ii=0;ii<request.size();++ii)
-				if(request[ii]=='/')
-					request[ii]=' ';
-
-			//Create Parser
-			std::istringstream command_parser(request);
-
-			//Parse "uav"
-			command_parser>>request;
-
-			//Parse id
-			bool parsed_id=(command_parser>>request);
-			int uav_id=msl::to_int(request);
-
-			//Find the Drone
+			std::string variable="";
+			std::string value="";
+			unsigned int state=0;
+			char uav_id=0;
 			unsigned int uav_index=-1;
 
-			for(unsigned int ii=0;ii<drones.size();++ii)
+			for(unsigned int ii=2;ii<request.size();++ii)
 			{
-				if(drones[ii].id()==uav_id)
+				if(state==0)
 				{
-					uav_index=ii;
-					break;
+					if(request[ii]!='=')
+						variable+=request[ii];
+					else
+						state=1;
 				}
-			}
-
-			//Send Everything
-			if(!parsed_id)
-				client<<msl::http_pack_string("Not implemented yet!","text/plain");
-
-			//Check for Valid ID (1-255, 0 is invalid!) and Valid Index (> -1)
-			else if(uav_id>0&&uav_id<256&&uav_index!=static_cast<unsigned int>(-1))
-			{
-				//Make UAV JSON Object
-				msl::json uav_json;
-				msl::json uav_json_stat;
-					msl::json uav_json_position;
-						uav_json_position.set("lat",drones[uav_index].position().lat);
-						uav_json_position.set("lng",drones[uav_index].position().lng);
-						uav_json_position.set("alt",drones[uav_index].position().alt);
-					uav_json_stat.set("pos",uav_json_position.str());
-					msl::json uav_json_radio;
-						uav_json_radio.set("io",drones[uav_index].stat_get()&1);
-						uav_json_radio.set("quality",100);
-					uav_json_stat.set("radio",uav_json_radio.str());
-					msl::json uav_json_camera;
-						uav_json_camera.set("io",drones[uav_index].stat_get()&6);
-						uav_json_camera.set("debug","ok");
-						uav_json_camera.set("angle",drones[uav_index].img2_angle());
-						uav_json_camera.set("servo",drones[uav_index].img2_servo());
-					uav_json_stat.set("camera",uav_json_camera.str());
-				msl::json uav_json_img;
-					uav_json_img.set("size",drones[uav_index].img2_map().size());
-
-					std::string preview_id_string=msl::to_string(uav_id);
-					while(preview_id_string.size()<3)
-						preview_id_string.insert(0,"0");
-					uav_json_img.set("preview","drone/preview_"+preview_id_string+".jpg");
-
-					for(std::map<short,location>::const_iterator iter=drones[uav_index].img2_map().begin();iter!=drones[uav_index].img2_map().end();++iter)
-					{
-						msl::json uav_json_img_num;
-							msl::json uav_json_loc;
-								uav_json_loc.set("lat",msl::to_string(iter->second.lat));
-								uav_json_loc.set("lng",msl::to_string(iter->second.lng));
-								uav_json_loc.set("alt",msl::to_string(iter->second.alt));
-							uav_json_img_num.set("pos",uav_json_loc.str());
-						uav_json_img.set(msl::to_string(iter->first),uav_json_img_num.str());
-					}
-
-				uav_json.set("stat",uav_json_stat.str());
-				uav_json.set("img",uav_json_img.str());
-
-				//Send Whole UAV Object
-				if(!(command_parser>>request))
-					client<<msl::http_pack_string(uav_json.str(),"text/plain");
-
-				//Status Request
-				else if(request=="stat")
+				else if(state==1)
 				{
-					//Send Whole Status Object
-					if(!(command_parser>>request))
-						client<<msl::http_pack_string(uav_json.get("stat"),"text/plain");
+					if(request[ii]!='&')
+						value+=request[ii];
 
-					//Position Request
-					else if(request=="pos")
+					if(request[ii]=='&'||ii+1>=request.size())
 					{
-						//Send Whole Position Object
-						if(!(command_parser>>request))
-							client<<msl::http_pack_string(uav_json_stat.get("pos"),"text/plain");
-
-						//Send Lattitude
-						else if(request=="lat")
-							client<<msl::http_pack_string(uav_json_position.get("lat"),"text/plain");
-
-						//Send Longitude
-						else if(request=="lng")
-							client<<msl::http_pack_string(uav_json_position.get("lng"),"text/plain");
-
-						//Send Altitude
-						else if(request=="alt")
-							client<<msl::http_pack_string(uav_json_position.get("alt"),"text/plain");
-					}
-
-					//Radio Request
-					else if(request=="radio")
-					{
-						//Send Whole Radio Object
-						if(!(command_parser>>request))
-							client<<msl::http_pack_string(uav_json_radio.str(),"text/plain");
-
-						//IO Request
-						else if(request=="io")
+						if(variable=="id")
 						{
-							//Send Current Radio IO State
-							if(!(command_parser>>request))
-								client<<msl::http_pack_string(uav_json_radio.get("io"),"text/plain");
+							uav_id=msl::to_int(value);
 
-							//Set Current Radio IO State
-							else
+							for(unsigned int ii=0;ii<uavs.size();++ii)
 							{
-								if(msl::to_int(request)==0)
+								if(uavs[ii]._id==static_cast<unsigned int>(uav_id))
 								{
-									drones[uav_index].stat_set(drones[uav_index].stat_get()&(~1));
-									std::cout<<"radio off"<<std::endl;
-								}
-								else
-								{
-									drones[uav_index].stat_set(drones[uav_index].stat_get()|1);
-									std::cout<<"radio on"<<std::endl;
+									uav_index=ii;
+									break;
 								}
 							}
 						}
-
-						//Send Radio Quality
-						else if(request=="quality")
-							client<<msl::http_pack_string(uav_json_radio.get("quality"),"text/plain");
-					}
-
-					//Camera Request
-					else if(request=="camera")
-					{
-						//Send Whole Camera Object
-						if(!(command_parser>>request))
-							client<<msl::http_pack_string(uav_json_camera.str(),"text/plain");
-
-						//IO Request
-						else if(request=="io")
+						else if(uav_index!=-1)
 						{
-							//Send Current Camera IO State
-							if(!(command_parser>>request))
-								client<<msl::http_pack_string(uav_json_camera.get("io"),"text/plain");
-
-							//Set Current Camera IO State
-							else
+							if(variable=="status")
 							{
-								if(msl::to_int(request)==0)
-								{
-									drones[uav_index].stat_set(drones[uav_index].stat_get()&(~6));
-									std::cout<<"camera off"<<std::endl;
-								}
-								else
-								{
-									drones[uav_index].stat_set(drones[uav_index].stat_get()|6);
-									std::cout<<"camera on"<<std::endl;
-								}
+								if(msl::to_bool(value))
+									std::cout<<"status"<<std::endl;
+							}
+							else if(variable=="radio")
+							{
+								uavs[uav_index].change_hw(1,msl::to_bool(value));
+								std::cout<<"radio\t"<<msl::to_bool(value)<<std::endl;
+							}
+							else if(variable=="jpg_camera")
+							{
+								uavs[uav_index].change_hw(2,msl::to_bool(value));
+							}
+							else if(variable=="nex_camera")
+							{
+								uavs[uav_index].change_hw(3,msl::to_bool(value));
 							}
 						}
 
-						//Send Camera Debug
-						else if(request=="debug")
-							client<<msl::http_pack_string(uav_json_camera.get("debug"),"text/plain");
-
-						//Send Camera Angle
-						else if(request=="angle")
-							client<<msl::http_pack_string(uav_json_camera.get("angle"),"text/plain");
-
-						//Send Camera Servo Angle
-						else if(request=="servo")
-							client<<msl::http_pack_string(uav_json_camera.get("servo"),"text/plain");
-					}
-				}
-
-				//Image Request
-				else if(request=="img")
-				{
-					//Parse Image Number
-					bool parsed=(command_parser>>request);
-					std::string uav_img=request;
-
-					//Send Whole Image Object
-					if(!parsed)
-						client<<msl::http_pack_string(uav_json_img.str(),"text/plain");
-
-					//Send Total Number of Images
-					else if(request=="size")
-						client<<msl::http_pack_string(uav_json_img.get("size"),"text/plain");
-
-					//Check for Valid Image Number (1-32676, 0 is invalid!)
-					else if(msl::to_int(uav_img)>0)
-					{
-						//Get Image Number JSON Object
-						msl::json uav_json_img_number(uav_json_img.get(uav_img));
-
-						//Send Whole Image Number Object
-						if(!(command_parser>>request))
-							client<<msl::http_pack_string(uav_json_img.get(uav_img),"text/plain");
-
-						//Position Request
-						else if(request=="pos")
-						{
-							//Get Position JSON Object
-							msl::json uav_json_img_number_pos(uav_json_img_number.get("pos"));
-
-							//Send Whole Image Position Object
-							if(!(command_parser>>request))
-								client<<msl::http_pack_string(uav_json_img_number_pos.str(),"text/plain");
-
-							//Send Image Lattitude
-							else if(request=="lat")
-								client<<msl::http_pack_string(uav_json_img_number_pos.get("lat"),"text/plain");
-
-							//Send Image Longitude
-							else if(request=="lng")
-								client<<msl::http_pack_string(uav_json_img_number_pos.get("lng"),"text/plain");
-
-							//Send Image Altitude
-							else if(request=="alt")
-								client<<msl::http_pack_string(uav_json_img_number_pos.get("alt"),"text/plain");
-						}
-
-						//Source Request
-						else if(request=="src")
-							client<<msl::http_pack_string(uav_json_img_number.get("src"),"text/plain");
+						variable="";
+						value="";
+						state=0;
 					}
 				}
 			}
 		}
 
-		//Web Pages
+		//File Requests
 		else
 		{
-			//Parse ?'s
-			for(unsigned int ii=0;ii<request.size();++ii)
-				if(request[ii]=='?')
-					request=request.substr(0,ii);
-
-			//Mime Type Variable (Default plain text)
-			std::string mime_type="text/plain";
-
 			//Check for Code Mime Type
 			if(msl::ends_with(request,".js"))
 				mime_type="application/x-javascript";

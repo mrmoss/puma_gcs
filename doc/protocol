@@ -1,0 +1,114 @@
+###########
+Data Packet
+###########
+	"dat"				string			3
+	id					char			1
+	data size			char			1
+	data bytes			char			*
+	crc					char			1
+
+##########
+Packet IDs
+##########
+	0				heartbeat
+	1				radio
+	2				jpg camera
+	3				nex camera
+
+###############
+From UAV to GCS
+###############
+	Heartbeat Packet (ID 0)
+		sd flags		char			1
+		jpg flags		char			1
+		nex flags		char			1
+		lat				float			4
+		lng				float			4
+		alt				float			4
+		fix				char			1
+		course			float			4
+		speed			float			4
+
+	JPG Camera Packet (ID 2)
+		sequence		short			2
+		frame size		short			2
+		block size		char			1
+		block bytes		char			*
+
+	NEX Camera Packet (ID 3)
+		sequence		short			2
+		lat				float			4
+		lng				float			4
+		alt				float			4
+
+###############
+From GCS to UAV
+###############
+	Radio Packet (ID 1)
+		on/off			char			1
+
+	JPG Packet (ID 2)
+		on/off			char			1
+
+	NEX Packet (ID 3)
+		on/off			char			1
+
+######################
+From GCS to Web Client
+######################
+	Upon receiving a status request the server responds with JSON packet containing the status info from the last heartbeat message received from the uav,
+	the src of the preview image, and the locations of the pictures taken from the nex camera.
+
+	{
+		"status":
+		{
+			"id":num,
+			"sd":sd flags,
+			"jpg":jpg flags,
+			"nex":nex flags,
+			"lat":current gps lat location,
+			"lng":current gps lng location,
+			"alt":current gps alt location,
+			"fix":current gps fix status,
+			"course":current gps course heading,
+			"speed":current gps speed
+		}
+		,
+		"jpg":
+		{
+			"width":jpg width,
+			"height":jpg height,
+			"src":url of image
+		}
+		,
+		"nex":
+		{
+			"size":number of images taken (note there may not be this many images in this object)
+			PIC_NUM (note these may not be contiguous, could go 4, 6, 10, 22, 1000, etc...):
+			{
+				"lat":lat of picture,
+				"lng":lng of picture,
+				"alt":alt of picture
+			}
+			,
+			...
+		}
+	}
+
+######################
+From Web Client to GCS
+######################
+	&uav=ID				Set the uav to get/set, ID can be 1 to 255.
+	&status=IO		If IO is not 0 GCS responds with a status update.
+	&radio=IO			If IO is not 0 GCS turns on radio, no response.
+	&jpg_camera=IO		If IO is not 0 GCS turns on jpg camera, no response.
+	&nex_camera=IO		If IO is not 0 GCS turns on nex_camera, no response.
+
+	Example 1:			&uav=3&heartbeat=1&radio=1&jpg_camera=1&nex_camera=1
+						Asks for a heartbeat update for uav 3, then turns the radio on for uav 3, then turns on the jpg camera on for uav 3, and lastly turns on the nex camera on for uav 3.
+						The uav field must be set first or you will not get a response from the server.
+						Order doesn't really matter for the commands, but they are executed in order.
+
+	Example 2:			&uav=3&heartbeat=1&uav=6&radio=1
+						Asks for a heartbeat update for uav 3 and then turns the radio on for uav 6.
+						Note you can get/set to multiple uavs.
