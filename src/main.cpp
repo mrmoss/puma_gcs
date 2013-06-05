@@ -1,6 +1,7 @@
 #include <cstdlib>
 #include "msl/file_util.hpp"
 #include <iostream>
+#include "msl/json.hpp"
 #include "msl/serial.hpp"
 #include "msl/socket.hpp"
 #include "msl/socket_util.hpp"
@@ -21,8 +22,8 @@ char calculate_crc(const std::string& packet)
 class uav
 {
 	public:
-		uav(const char id,const std::string serial_port,const unsigned int serial_baud):_id(id),_serial_port(serial_port),_serial_baud(serial_baud),
-			_packet_state(0),_packet_buffer(""),sd(0),jpg(0),nex(0),lat(0.0),lng(0.0),alt(0.0),fix(0),sats(0),course(0.0),speed(0.0)
+		uav(const char ID,const std::string serial_port,const unsigned int serial_baud):id(ID),_serial_port(serial_port),_serial_baud(serial_baud),
+			_packet_state(0),_packet_buffer(""),sd(1),jpg(1),nex(0),lat(64.85707646953384),lng(-147.82556247711182),alt(200.12),fix(2),sats(2),course(30.4),speed(15.3)
 		{}
 
 		std::string change_hw(const char id,const bool state)
@@ -158,7 +159,7 @@ class uav
 
 									if(static_cast<short>(_jpg_data.size())==*(short*)&_packet_buffer[7])
 									{
-										std::string filename=msl::to_string(_id);
+										std::string filename=msl::to_string(id);
 										while(filename.size()<3)
 											filename.insert(0,"0");
 
@@ -212,7 +213,40 @@ class uav
 			}
 		}
 
-		char _id;
+		std::string info() const
+		{
+			msl::json response;
+
+			msl::json status;
+			status.set("id",static_cast<int>(static_cast<unsigned char>(id)));
+			status.set("serial_port",_serial_port);
+			status.set("serial_baud",_serial_baud);
+			status.set("serial_status",static_cast<int>(_serial.good()));
+			status.set("sd",static_cast<int>(static_cast<unsigned char>(sd)));
+			status.set("jpg",static_cast<int>(static_cast<unsigned char>(jpg)));
+			status.set("nex",static_cast<int>(static_cast<unsigned char>(nex)));
+			status.set("lat",lat);
+			status.set("lng",lng);
+			status.set("alt",alt);
+			status.set("fix",static_cast<int>(fix));
+			status.set("course",course);
+			status.set("speed",speed);
+			response.set("status",status.str());
+
+			msl::json jpg_camera;
+			jpg_camera.set("width",160);
+			jpg_camera.set("height",120);
+			jpg_camera.set("src","/test.jpg");
+			response.set("jpg",jpg_camera.str());
+
+			msl::json nex_camera;
+			nex_camera.set("size",0);
+			response.set("nex",nex_camera.str());
+
+			return response.str();
+		}
+
+		char id;
 		std::string _serial_port;
 		unsigned int _serial_baud;
 		msl::serial _serial;
@@ -254,6 +288,10 @@ int main()
 	}
 
 	uavs.push_back(uav(5,"/dev/ttyUSB0",57600));
+	uavs.push_back(uav(25,"/dev/ttyUSB3",38400));
+	uavs.push_back(uav(255,"/dev/ttyACM1",115200));
+	uavs[1].lng+=0.02;
+	uavs[2].lat+=0.02;
 
 	//Took out for testing without a radio...
 	/*for(unsigned int ii=0;ii<uavs.size();++ii)
@@ -294,7 +332,7 @@ int main()
 				char byte='\n';
 
 				//Get a Byte
-				if(clients[ii].available()>0&&clients[ii].read(&byte,1)==1)
+				while(clients[ii].available()>0&&clients[ii].read(&byte,1)==1)
 				{
 					//Add the Byte to Client Buffer
 					client_messages[ii]+=byte;
@@ -317,6 +355,9 @@ int main()
 				--ii;
 			}
 		}
+
+		//Give OS a Break
+		usleep(0);
 	}
 
 	return 0;
@@ -370,38 +411,56 @@ void service_client(msl::socket& client,const std::string& message)
 
 					if(request[ii]=='&'||ii+1>=request.size())
 					{
-						if(variable=="id")
+						if(variable=="uavs")
 						{
-							uav_id=msl::to_int(value);
-
-							for(unsigned int ii=0;ii<uavs.size();++ii)
+							if(msl::to_bool(value))
 							{
-								if(uavs[ii]._id==static_cast<unsigned int>(uav_id))
-								{
-									uav_index=ii;
-									break;
-								}
+								msl::json response;
+								response.set("size",uavs.size());
+
+								for(unsigned int jj=0;jj<uavs.size();++jj)
+									response.set(msl::to_string(jj),static_cast<int>(static_cast<unsigned char>(uavs[jj].id)));
+
+								client<<msl::http_pack_string(response.str(),mime_type);
 							}
 						}
-						else if(uav_index!=-1)
+						else
 						{
-							if(variable=="status")
+							if(variable=="id")
 							{
-								if(msl::to_bool(value))
-									std::cout<<"status"<<std::endl;
+								uav_id=msl::to_int(value);
+
+								for(unsigned int ii=0;ii<uavs.size();++ii)
+								{
+									if(uavs[ii].id==uav_id)
+									{
+										uav_index=ii;
+										break;
+									}
+								}
 							}
-							else if(variable=="radio")
+							else if(uav_index!=static_cast<unsigned int>(-1))
 							{
-								uavs[uav_index].change_hw(1,msl::to_bool(value));
-								std::cout<<"radio\t"<<msl::to_bool(value)<<std::endl;
-							}
-							else if(variable=="jpg_camera")
-							{
-								uavs[uav_index].change_hw(2,msl::to_bool(value));
-							}
-							else if(variable=="nex_camera")
-							{
-								uavs[uav_index].change_hw(3,msl::to_bool(value));
+								if(variable=="status")
+								{
+									if(msl::to_bool(value))
+									{
+										client<<msl::http_pack_string(uavs[uav_index].info(),mime_type);
+									}
+								}
+								else if(variable=="radio")
+								{
+									uavs[uav_index].change_hw(1,msl::to_bool(value));
+									std::cout<<"radio\t"<<msl::to_bool(value)<<std::endl;
+								}
+								else if(variable=="jpg_camera")
+								{
+									uavs[uav_index].change_hw(2,msl::to_bool(value));
+								}
+								else if(variable=="nex_camera")
+								{
+									uavs[uav_index].change_hw(3,msl::to_bool(value));
+								}
 							}
 						}
 

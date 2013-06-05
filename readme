@@ -1,0 +1,17 @@
+Installing the server:
+	To run the server start it up from the command line like so:
+	Windows:	gcs.exe
+	Linux/Mac:	./gcs
+
+	Specify which port to run the web server on in the command line like so:
+	Windows:	gcs.exe 8080
+	Linux/Mac:	./gcs 8080
+
+	This is meant to be run on a server for multiple clients can connect to it.  It would be better to add this program to the startup applications.
+	Windows:	Add to startup folder.
+	Linux:		Add to /etc/rc.local file.
+	Mac:		ERR...ADD LATER...
+
+To compile the server from source:
+	Windows:	Goto the bin folder and run make.bat.
+	Linux/Mac:	Goto the bin folder and run make.

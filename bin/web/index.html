@@ -1,8 +1,225 @@
-<html>
+<html style="width:100%;height:100%;">
 	<head>
-		<title>Your here!</title>
+		<script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBo4AdeD8ZGn2PZRo5dcidSPNvIXJWEeyU&sensor=false"></script>
+		<script type="text/javascript">
+			var map;
+			var uavs=new Array();
+
+			function initialize()
+			{
+				setInterval(uav_update,1000);
+
+				var map_settings={};
+				map_settings.zoom=20,
+				map_settings.center=new google.maps.LatLng(64.85707646953384,-147.82556247711182);
+				map_settings.mapTypeId=google.maps.MapTypeId.HYBRID;
+				map_settings.disableDoubleClickZoom=false;
+				map_settings.scrollwheel=true;
+				map_settings.keyboardShortcuts=false;
+				map_settings.disableDefaultUI=true;
+				map=new google.maps.Map(document.getElementById("map"),map_settings);
+			}
+
+			function uav_update()
+			{
+				var xmlhttp=new XMLHttpRequest();
+
+				xmlhttp.onreadystatechange=function()
+				{
+					if(xmlhttp.readyState==4&&xmlhttp.status==200)
+					{
+						try
+						{
+							var return_json=JSON.parse(xmlhttp.responseText);
+
+							if(return_json)
+							{
+								for(var ii=0;ii<return_json.size;++ii)
+									get_status(return_json[ii]);
+							}
+						}
+						catch(e)
+						{}
+					}
+				}
+
+				xmlhttp.open("GET",encodeURIComponent("&uavs=1"),true);
+				xmlhttp.send(null);
+			}
+
+			function get_status(id)
+			{
+				var xmlhttp=new XMLHttpRequest();
+
+				xmlhttp.onreadystatechange=function()
+				{
+					if(xmlhttp.readyState==4&&xmlhttp.status==200)
+					{
+						try
+						{
+							var return_json=JSON.parse(xmlhttp.responseText);
+
+							if(return_json)
+							{
+								var found=false;
+
+								for(var ii=0;ii<uavs.length;++ii)
+								{
+									if(uavs[ii].obj.status.id==return_json.status.id)
+									{
+										found=true;
+										uavs[ii].obj=return_json;
+										uavs[ii].marker.setPosition(new google.maps.LatLng(return_json.status.lat,return_json.status.lng));
+										break;
+									}
+								}
+
+								if(!found)
+								{
+									document.getElementById("uav_select").options.add(new Option(return_json.status.id));
+									uavs.push({"obj":return_json,"marker":new google.maps.Marker({clickable:false,position:new google.maps.LatLng(return_json.status.lat,return_json.status.lng),map:map,icon:{url:"img/plane_good.png"}})});
+								}
+
+								view_uav();
+							}
+						}
+						catch(e)
+						{}
+					}
+				}
+				xmlhttp.open("GET",encodeURIComponent("&id="+id+"&status=1"),true);
+				xmlhttp.send(null);
+			}
+
+			function zoom_in()
+			{
+				map.setZoom(map.getZoom()+1);
+			}
+
+			function zoom_out()
+			{
+				map.setZoom(map.getZoom()-1);
+			}
+
+			function view_uav()
+			{
+				var index=document.getElementById("uav_select").selectedIndex;
+
+				for(var ii=0;ii<uavs.length;++ii)
+				{
+					if(uavs[ii].obj.status.id.toString()==document.getElementById("uav_select").options[index].value.toString())
+					{
+						if(uavs[ii].obj.status.sd==0)
+							document.getElementById("sd").value="error";
+						else
+							document.getElementById("sd").value="good";
+
+						if(uavs[ii].obj.status.jpg==0)
+							document.getElementById("jpg").value="off";
+						else
+							document.getElementById("jpg").value="on";
+
+						if(uavs[ii].obj.status.nex==0)
+							document.getElementById("nex").value="off";
+						else
+							document.getElementById("nex").value="on";
+
+						document.getElementById("lat").value=uavs[ii].obj.status.lat;
+						document.getElementById("lng").value=uavs[ii].obj.status.lng;
+						document.getElementById("alt").value=uavs[ii].obj.status.alt;
+
+						if(uavs[ii].obj.status.fix==0)
+							document.getElementById("fix").value="invalid";
+						else if(uavs[ii].obj.status.fix==1)
+							document.getElementById("fix").value="gps";
+						else if(uavs[ii].obj.status.fix==2)
+							document.getElementById("fix").value="dgps";
+
+						document.getElementById("course").value=uavs[ii].obj.status.course+" deg";
+						document.getElementById("speed").value=uavs[ii].obj.status.speed+" knots";
+
+						if(document.getElementById("follow").checked)
+						{
+							map.panTo(new google.maps.LatLng(uavs[ii].obj.status.lat,uavs[ii].obj.status.lng));
+							map.setOptions({draggable:false});
+						}
+						else
+						{
+							map.setOptions({draggable:true});
+						}
+
+						return;
+					}
+				}
+
+				document.getElementById("sd").value="error";
+				document.getElementById("jpg").value="off";
+				document.getElementById("nex").value="off";
+				document.getElementById("lat").value="nan";
+				document.getElementById("lng").value="nan";
+				document.getElementById("alt").value="nan";
+				document.getElementById("fix").value="invalid";
+				document.getElementById("course").value="0 deg";
+				document.getElementById("speed").value="0 knots";
+				map.setOptions({draggable:true});
+			}
+		</script>
 	</head>
-	<body>
-		<center>Now go away...</center>
+	<body onload="initialize();" style="width:100%;height:100%;margin:0;">
+		<title>GCS - Flight</title>
+		<table style="width:100%;height:100%;">
+			<tr>
+				<td style="width:100%;height:100%;">
+					<div style="width:100%;height:100%;" id="map"></div>
+				</td>
+			</tr>
+			<tr>
+				<td style="width:100%;height:10%">
+					uav
+					<select id="uav_select" onchange="view_uav();"><option>-</option></select>
+					sd <input type="text" id="sd" style="width:80px;" readonly/>
+					jpg <input type="text" id="jpg" style="width:80px;" readonly/>
+					nex <input type="text" id="nex" style="width:80px;" readonly/>
+					lat <input type="text" id="lat" style="width:80px;" readonly/>
+					lng <input type="text" id="lng" style="width:80px;" readonly/>
+					alt <input type="text" id="alt" style="width:80px;" readonly/>
+					fix <input type="text" id="fix" style="width:80px;" readonly/>
+					course <input type="text" id="course" style="width:80px;" readonly/>
+					speed <input type="text" id="speed" style="width:80px;" readonly/>
+					<input type="checkbox" id="follow" checked/> follow
+				</td>
+			</tr>
+		</table>
+		<!--<table>
+			<tr>
+				<td>
+					<table>
+						<tr><td>id</td><td><input type="text" id="id" style="width:80px;" readonly/></td></tr>
+						<tr><td>sd</td><td><input type="text" id="sd" style="width:80px;" readonly/></td></tr>
+						<tr><td>jpg</td><td><input type="text" id="jpg" style="width:80px;" readonly/></td></tr>
+						<tr><td>nex</td><td><input type="text" id="nex" style="width:80px;" readonly/></td></tr>
+						<tr><td>lat</td><td><input type="text" id="lat" style="width:80px;" readonly/></td></tr>
+						<tr><td>lng</td><td><input type="text" id="lng" style="width:80px;" readonly/></td></tr>
+						<tr><td>alt</td><td><input type="text" id="alt" style="width:80px;" readonly/></td></tr>
+						<tr><td>fix</td><td><input type="text" id="fix" style="width:80px;" readonly/></td></tr>
+						<tr><td>course</td><td><input type="text" id="course" style="width:80px;" readonly/></td></tr>
+						<tr><td>speed</td><td><input type="text" id="speed" style="width:80px;" readonly/></td></tr>
+					</table>
+				</td>
+				<td>
+					<div style="width:320px;height:240px;" id="map"></div>
+				</td>
+			</tr>
+				<td></td>
+				<td>
+					<center>
+						<input type="button" value="-" onclick="zoom_out();"/>
+						<input type="button" value="+" onclick="zoom_in();"/>
+						<input type="button" value="test" onclick="test();"/>
+					</center>
+				</td>
+			<tr>
+			</tr>
+		</table>-->
 	</body>
 </html>
