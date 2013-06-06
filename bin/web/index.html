@@ -28,7 +28,7 @@
 				{
 					if(xmlhttp.readyState==4&&xmlhttp.status==200)
 					{
-						//try
+						try
 						{
 							var return_json=JSON.parse(xmlhttp.responseText);
 
@@ -85,8 +85,8 @@
 									view_uav();
 							}
 						}
-						//catch(e)
-						//{}
+						catch(e)
+						{}
 					}
 				}
 

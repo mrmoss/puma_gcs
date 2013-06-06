@@ -447,6 +447,8 @@ void service_client(msl::socket& client,const std::string& message)
 									if(uavs[jj].id==uav_id)
 									{
 										uav_index=jj;
+										//TEST!
+										uavs[uav_index].lat+=0.00001;
 										break;
 									}
 								}
