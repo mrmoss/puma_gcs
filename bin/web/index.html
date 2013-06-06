@@ -10,7 +10,7 @@
 				setInterval(uav_update,1000);
 
 				var map_settings={};
-				map_settings.zoom=20,
+				map_settings.zoom=16,
 				map_settings.center=new google.maps.LatLng(64.85707646953384,-147.82556247711182);
 				map_settings.mapTypeId=google.maps.MapTypeId.HYBRID;
 				map_settings.disableDoubleClickZoom=false;
@@ -28,18 +28,65 @@
 				{
 					if(xmlhttp.readyState==4&&xmlhttp.status==200)
 					{
-						try
+						//try
 						{
 							var return_json=JSON.parse(xmlhttp.responseText);
 
 							if(return_json)
 							{
+								var temp_uavs=new Array();
+
 								for(var ii=0;ii<return_json.size;++ii)
+								{
 									get_status(return_json[ii]);
+
+									for(var jj=0;jj<uavs.length;++jj)
+									{
+										if(uavs[jj].obj.status.id==return_json[ii])
+										{
+											temp_uavs.push(uavs[jj]);
+											break;
+										}
+									}
+								}
+
+								for(var ii=0;ii<uavs.length;++ii)
+								{
+									var found=false;
+
+									for(var jj=0;jj<temp_uavs.length;++jj)
+									{
+										if(uavs[ii].obj.status.id==temp_uavs[jj].obj.status.id)
+										{
+											found=true;
+											break;
+										}
+									}
+
+									if(!found)
+									{
+										uavs[ii].marker.setVisible(false);
+
+										for(var jj=0;jj<document.getElementById("uav_select").options.length;++jj)
+										{
+											if(document.getElementById("uav_select").options[jj].value==uavs[ii].obj.status.id)
+											{
+												document.getElementById("uav_select").remove(jj);
+												break;
+											}
+										}
+									}
+								}
+
+								uavs.length=0;
+								uavs=temp_uavs;
+
+								if(uavs.length==0)
+									view_uav();
 							}
 						}
-						catch(e)
-						{}
+						//catch(e)
+						//{}
 					}
 				}
 
@@ -87,6 +134,7 @@
 						{}
 					}
 				}
+
 				xmlhttp.open("GET",encodeURIComponent("&id="+id+"&status=1"),true);
 				xmlhttp.send(null);
 			}
@@ -103,65 +151,108 @@
 
 			function view_uav()
 			{
+				if(uavs.length>0)
+				{
+					var index=document.getElementById("uav_select").selectedIndex;
+
+					for(var ii=0;ii<uavs.length;++ii)
+					{
+						if(uavs[ii].obj.status.id.toString()==document.getElementById("uav_select").options[index].value.toString())
+						{
+							if(uavs[ii].obj.status.sd==0)
+								document.getElementById("sd").innerHTML="error";
+							else
+								document.getElementById("sd").innerHTML="good";
+
+							document.getElementById("jpg").checked=uavs[ii].obj.status.jpg;
+							document.getElementById("nex").checked=uavs[ii].obj.status.nex;
+
+							document.getElementById("lat").innerHTML=uavs[ii].obj.status.lat;
+							document.getElementById("lng").innerHTML=uavs[ii].obj.status.lng;
+							document.getElementById("alt").innerHTML=uavs[ii].obj.status.alt;
+
+							if(uavs[ii].obj.status.fix==0)
+								document.getElementById("fix").innerHTML="none";
+							else if(uavs[ii].obj.status.fix==1)
+								document.getElementById("fix").innerHTML="gps";
+							else if(uavs[ii].obj.status.fix==2)
+								document.getElementById("fix").innerHTML="dgps";
+
+							document.getElementById("course").innerHTML=uavs[ii].obj.status.course;
+							document.getElementById("speed").innerHTML=uavs[ii].obj.status.speed;
+
+							if(document.getElementById("follow").checked)
+							{
+								map.panTo(new google.maps.LatLng(uavs[ii].obj.status.lat,uavs[ii].obj.status.lng));
+								map.setOptions({draggable:false});
+							}
+							else
+							{
+								map.setOptions({draggable:true});
+							}
+
+							return;
+						}
+					}
+				}
+				else
+				{
+					document.getElementById("uav_select").options.length=1;
+					document.getElementById("uav_select").selectedIndex=0;
+				}
+
+				document.getElementById("sd").innerHTML="error";
+				document.getElementById("jpg").checked=false;
+				document.getElementById("nex").checked=false;
+				document.getElementById("lat").innerHTML="nan";
+				document.getElementById("lng").innerHTML="nan";
+				document.getElementById("alt").innerHTML="nan";
+				document.getElementById("fix").innerHTML="none";
+				document.getElementById("course").innerHTML="0";
+				document.getElementById("speed").innerHTML="0";
+				map.setOptions({draggable:true});
+			}
+
+			function change_jpg()
+			{
 				var index=document.getElementById("uav_select").selectedIndex;
 
 				for(var ii=0;ii<uavs.length;++ii)
 				{
 					if(uavs[ii].obj.status.id.toString()==document.getElementById("uav_select").options[index].value.toString())
 					{
-						if(uavs[ii].obj.status.sd==0)
-							document.getElementById("sd").value="error";
-						else
-							document.getElementById("sd").value="good";
+						var state=0;
 
-						if(uavs[ii].obj.status.jpg==0)
-							document.getElementById("jpg").value="off";
-						else
-							document.getElementById("jpg").value="on";
+						if(document.getElementById("jpg").checked)
+							state=1;
 
-						if(uavs[ii].obj.status.nex==0)
-							document.getElementById("nex").value="off";
-						else
-							document.getElementById("nex").value="on";
-
-						document.getElementById("lat").value=uavs[ii].obj.status.lat;
-						document.getElementById("lng").value=uavs[ii].obj.status.lng;
-						document.getElementById("alt").value=uavs[ii].obj.status.alt;
-
-						if(uavs[ii].obj.status.fix==0)
-							document.getElementById("fix").value="invalid";
-						else if(uavs[ii].obj.status.fix==1)
-							document.getElementById("fix").value="gps";
-						else if(uavs[ii].obj.status.fix==2)
-							document.getElementById("fix").value="dgps";
-
-						document.getElementById("course").value=uavs[ii].obj.status.course+" deg";
-						document.getElementById("speed").value=uavs[ii].obj.status.speed+" knots";
-
-						if(document.getElementById("follow").checked)
-						{
-							map.panTo(new google.maps.LatLng(uavs[ii].obj.status.lat,uavs[ii].obj.status.lng));
-							map.setOptions({draggable:false});
-						}
-						else
-						{
-							map.setOptions({draggable:true});
-						}
-
-						return;
+						var xmlhttp=new XMLHttpRequest();
+						xmlhttp.open("GET",encodeURIComponent("&id="+uavs[ii].obj.status.id.toString()+"&jpg_camera="+state),true);
+						xmlhttp.send(null);
+						break;
 					}
 				}
+			}
 
-				document.getElementById("sd").value="error";
-				document.getElementById("jpg").value="off";
-				document.getElementById("nex").value="off";
-				document.getElementById("lat").value="nan";
-				document.getElementById("lng").value="nan";
-				document.getElementById("alt").value="nan";
-				document.getElementById("fix").value="invalid";
-				document.getElementById("course").value="0 deg";
-				document.getElementById("speed").value="0 knots";
-				map.setOptions({draggable:true});
+			function change_nex()
+			{
+				var index=document.getElementById("uav_select").selectedIndex;
+
+				for(var ii=0;ii<uavs.length;++ii)
+				{
+					if(uavs[ii].obj.status.id.toString()==document.getElementById("uav_select").options[index].value.toString())
+					{
+						var state=0;
+
+						if(document.getElementById("nex").checked)
+							state=1;
+
+						var xmlhttp=new XMLHttpRequest();
+						xmlhttp.open("GET",encodeURIComponent("&id="+uavs[ii].obj.status.id.toString()+"&nex_camera="+state),true);
+						xmlhttp.send(null);
+						break;
+					}
+				}
 			}
 		</script>
 	</head>
@@ -175,51 +266,50 @@
 			</tr>
 			<tr>
 				<td style="width:100%;height:10%">
-					uav
-					<select id="uav_select" onchange="view_uav();"><option>-</option></select>
-					sd <input type="text" id="sd" style="width:80px;" readonly/>
-					jpg <input type="text" id="jpg" style="width:80px;" readonly/>
-					nex <input type="text" id="nex" style="width:80px;" readonly/>
-					lat <input type="text" id="lat" style="width:80px;" readonly/>
-					lng <input type="text" id="lng" style="width:80px;" readonly/>
-					alt <input type="text" id="alt" style="width:80px;" readonly/>
-					fix <input type="text" id="fix" style="width:80px;" readonly/>
-					course <input type="text" id="course" style="width:80px;" readonly/>
-					speed <input type="text" id="speed" style="width:80px;" readonly/>
-					<input type="checkbox" id="follow" checked/> follow
+					<table border="1" style="width:100%">
+						<colgroup>
+							<col span="1" style="width:64px;">
+							<col span="1" style="width:64px;">
+							<col span="1" style="width:100px;">
+							<col span="1" style="width:100px;">
+							<col span="1" style="width:100px;">
+							<col span="1" style="width:64px;">
+							<col span="1" style="width:104px;">
+							<col span="1" style="width:96px;">
+							<col span="1" style="width:48px;">
+							<col span="1" style="width:32px;">
+							<col span="1" style="width:32px;">
+						</colgroup>
+						<tr>
+							<td>uav id</td>
+							<td>sd</td>
+							<td>lat</td>
+							<td>lng</td>
+							<td>alt(m)</td>
+							<td>fix</td>
+							<td>course(deg)</td>
+							<td>speed(kn)</td>
+							<td>follow</td>
+							<td>jpg</td>
+							<td>nex</td>
+							<td></td>
+						</tr>
+						<tr>
+							<td><select id="uav_select" onchange="view_uav();"><option>-</option></select></td>
+							<td><div id="sd"></div></td>
+							<td><div id="lat"></div></td>
+							<td><div id="lng"></div></td>
+							<td><div id="alt"></div></td>
+							<td><div id="fix"></div></td>
+							<td><div id="course"></div></td>
+							<td><div id="speed"></div></td>
+							<td><input type="checkbox" id="follow" checked/></td>
+							<td><input type="checkbox" id="jpg" onchange="change_jpg();" checked/></td>
+							<td><input type="checkbox" id="nex" onchange="change_nex();" checked/></td>
+						</tr>
+					</table>
 				</td>
 			</tr>
 		</table>
-		<!--<table>
-			<tr>
-				<td>
-					<table>
-						<tr><td>id</td><td><input type="text" id="id" style="width:80px;" readonly/></td></tr>
-						<tr><td>sd</td><td><input type="text" id="sd" style="width:80px;" readonly/></td></tr>
-						<tr><td>jpg</td><td><input type="text" id="jpg" style="width:80px;" readonly/></td></tr>
-						<tr><td>nex</td><td><input type="text" id="nex" style="width:80px;" readonly/></td></tr>
-						<tr><td>lat</td><td><input type="text" id="lat" style="width:80px;" readonly/></td></tr>
-						<tr><td>lng</td><td><input type="text" id="lng" style="width:80px;" readonly/></td></tr>
-						<tr><td>alt</td><td><input type="text" id="alt" style="width:80px;" readonly/></td></tr>
-						<tr><td>fix</td><td><input type="text" id="fix" style="width:80px;" readonly/></td></tr>
-						<tr><td>course</td><td><input type="text" id="course" style="width:80px;" readonly/></td></tr>
-						<tr><td>speed</td><td><input type="text" id="speed" style="width:80px;" readonly/></td></tr>
-					</table>
-				</td>
-				<td>
-					<div style="width:320px;height:240px;" id="map"></div>
-				</td>
-			</tr>
-				<td></td>
-				<td>
-					<center>
-						<input type="button" value="-" onclick="zoom_out();"/>
-						<input type="button" value="+" onclick="zoom_in();"/>
-						<input type="button" value="test" onclick="test();"/>
-					</center>
-				</td>
-			<tr>
-			</tr>
-		</table>-->
 	</body>
 </html>

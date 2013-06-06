@@ -131,23 +131,6 @@ class uav
 								sats=_packet_buffer[21];
 								course=*(float*)&_packet_buffer[22];
 								speed=*(float*)&_packet_buffer[26];
-
-								/*std::cout<<"heartbeat"<<std::endl;
-								std::cout<<"\td\t"<<_packet_buffer[0]<<std::endl;
-								std::cout<<"\ta\t"<<_packet_buffer[1]<<std::endl;
-								std::cout<<"\tt\t"<<_packet_buffer[2]<<std::endl;
-								std::cout<<"\tid\t"<<(int)_packet_buffer[3]<<std::endl;
-								std::cout<<"\tsize\t"<<(int)_packet_buffer[4]<<std::endl;
-								std::cout<<"\tsd\t"<<(int)sd<<std::endl;
-								std::cout<<"\tjpg\t"<<(int)jpg<<std::endl;
-								std::cout<<"\tnex\t"<<(int)nex<<std::endl;
-								std::cout<<"\tlat\t"<<lat<<std::endl;
-								std::cout<<"\tlng\t"<<lng<<std::endl;
-								std::cout<<"\talt\t"<<alt<<std::endl;
-								std::cout<<"\tfix\t"<<(int)fix<<std::endl;
-								std::cout<<"\tsats\t"<<(int)sats<<std::endl;
-								std::cout<<"\tcourse\t"<<course<<std::endl;
-								std::cout<<"\tspeed\t"<<speed<<std::endl;*/
 							}
 
 							else if(_packet_buffer[3]==2)
@@ -180,16 +163,6 @@ class uav
 								std::cout<<"unknown packet id"<<std::endl;
 							}
 						}
-						/*else if(msl::starts_with(_packet_buffer,"res"))
-						{
-							std::cout<<"response"<<std::endl;
-							std::cout<<"\tr\t"<<_packet_buffer[0]<<std::endl;
-							std::cout<<"\te\t"<<_packet_buffer[1]<<std::endl;
-							std::cout<<"\ts\t"<<_packet_buffer[2]<<std::endl;
-							std::cout<<"\tid\t"<<(int)_packet_buffer[3]<<std::endl;
-							std::cout<<"\tf1\t"<<(int)_packet_buffer[4]<<std::endl;
-							std::cout<<"\tf2\t"<<(int)_packet_buffer[5]<<std::endl;
-						}*/
 						else
 						{
 							std::cout<<"unknown packet header"<<std::endl;
@@ -246,6 +219,12 @@ class uav
 			return response.str();
 		}
 
+		void close()
+		{
+			if(_serial.good())
+				_serial.close();
+		}
+
 		char id;
 		std::string _serial_port;
 		unsigned int _serial_baud;
@@ -286,26 +265,6 @@ int main()
 		std::cout<<"socket :("<<std::endl;
 		exit(0);
 	}
-
-	uavs.push_back(uav(5,"/dev/ttyUSB0",57600));
-	uavs.push_back(uav(25,"/dev/ttyUSB3",38400));
-	uavs.push_back(uav(255,"/dev/ttyACM1",115200));
-	uavs[1].lng+=0.02;
-	uavs[2].lat+=0.02;
-
-	//Took out for testing without a radio...
-	/*for(unsigned int ii=0;ii<uavs.size();++ii)
-	{
-		if(uavs[ii].setup_serial())
-		{
-			std::cout<<"["<<ii<<"] :)"<<std::endl;
-		}
-		else
-		{
-			std::cout<<"["<<ii<<"] :("<<std::endl;
-			exit(0);
-		}
-	}*/
 
 	while(true)
 	{
@@ -411,7 +370,58 @@ void service_client(msl::socket& client,const std::string& message)
 
 					if(request[ii]=='&'||ii+1>=request.size())
 					{
-						if(variable=="uavs")
+						if(variable=="add")
+						{
+							msl::json object(value);
+
+							bool found_id=false;
+							bool found_port=false;
+
+							for(unsigned int jj=0;jj<uavs.size();++jj)
+							{
+								if(uavs[jj].id==static_cast<char>(msl::to_int(object.get("id"))))
+								{
+									found_id=true;
+									break;
+								}
+
+								if(uavs[jj]._serial_port==object.get("port"))
+								{
+									found_port=true;
+									break;
+								}
+							}
+
+							if(found_id||msl::to_int(object.get("id"))==0)
+							{
+								client<<msl::http_pack_string("invalid id",mime_type);
+							}
+							else if(found_port)
+							{
+								client<<msl::http_pack_string("invalid port",mime_type);
+							}
+							else
+							{
+								uav temp(static_cast<char>(msl::to_int(object.get("id"))),object.get("port"),msl::to_int(object.get("baud")));
+								uavs.push_back(temp);
+								client<<msl::http_pack_string("",mime_type);
+							}
+
+							break;
+						}
+						else if(variable=="remove")
+						{
+							for(unsigned int jj=0;jj<uavs.size();++jj)
+							{
+								if(static_cast<unsigned char>(uavs[jj].id)==static_cast<unsigned char>(msl::to_int(value)))
+								{
+									uavs[ii].close();
+									uavs.erase(uavs.begin()+jj);
+									break;
+								}
+							}
+						}
+						else if(variable=="uavs")
 						{
 							if(msl::to_bool(value))
 							{
@@ -423,6 +433,8 @@ void service_client(msl::socket& client,const std::string& message)
 
 								client<<msl::http_pack_string(response.str(),mime_type);
 							}
+
+							break;
 						}
 						else
 						{
@@ -430,11 +442,11 @@ void service_client(msl::socket& client,const std::string& message)
 							{
 								uav_id=msl::to_int(value);
 
-								for(unsigned int ii=0;ii<uavs.size();++ii)
+								for(unsigned int jj=0;jj<uavs.size();++jj)
 								{
-									if(uavs[ii].id==uav_id)
+									if(uavs[jj].id==uav_id)
 									{
-										uav_index=ii;
+										uav_index=jj;
 										break;
 									}
 								}
@@ -451,7 +463,6 @@ void service_client(msl::socket& client,const std::string& message)
 								else if(variable=="radio")
 								{
 									uavs[uav_index].change_hw(1,msl::to_bool(value));
-									std::cout<<"radio\t"<<msl::to_bool(value)<<std::endl;
 								}
 								else if(variable=="jpg_camera")
 								{
