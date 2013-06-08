@@ -36,10 +36,17 @@ void service_client(msl::socket& client,const std::string& message);
 std::vector<uav> uavs;
 
 //Main
-int main()
+int main(int argc, char* argv[])
 {
+	//Default Port is 8080
+	std::string server_port="8080";
+
+	//Get Command Line Port
+	if(argc>1)
+		server_port=argv[1];
+
 	//Create Server
-	msl::socket server("0.0.0.0:8080");
+	msl::socket server("0.0.0.0:"+server_port);
 
 	//Server Client Variables
 	std::vector<msl::socket> clients;
