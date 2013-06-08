@@ -35,22 +35,25 @@ class uav
 {
 	public:
 		uav(const char ID,const std::string serial_port,const unsigned int serial_baud):id(ID),_serial_port(serial_port),_serial_baud(serial_baud),
-			_packet_state(0),_packet_buffer(""),sd(1),jpg(1),nex(0),lat(64.85707646953384),lng(-147.82556247711182),alt(200.12),fix(2),sats(2),course(30.4),speed(15.3)
+			_packet_state(0),_packet_buffer(""),sd(1),jpg(1),nex(0),pos(64.85707646953384,-147.82556247711182,200.12),fix(2),sats(2),course(30.4),speed(15.3)
 		{}
 
-		std::string change_hw(const char id,const bool state)
+		void change_hw(const char id,const bool state)
 		{
-			std::string packet="dat";
-			packet+=id;
-			packet+=static_cast<char>(0x01);
-
-			if(!state)
-				packet+=static_cast<char>(0x00);
-			else
+			if(_serial.good())
+			{
+				std::string packet="dat";
+				packet+=id;
 				packet+=static_cast<char>(0x01);
 
-			packet+=calculate_crc(packet);
-			return packet;
+				if(!state)
+					packet+=static_cast<char>(0x00);
+				else
+					packet+=static_cast<char>(0x01);
+
+				packet+=calculate_crc(packet);
+				_serial<<packet;
+			}
 		}
 
 		bool setup_serial()
@@ -107,9 +110,9 @@ class uav
 								sd=_packet_buffer[5];
 								jpg=_packet_buffer[6];
 								nex=_packet_buffer[7];
-								lat=*(float*)&_packet_buffer[8];
-								lng=*(float*)&_packet_buffer[12];
-								alt=*(float*)&_packet_buffer[16];
+								pos.lat=*(float*)&_packet_buffer[8];
+								pos.lng=*(float*)&_packet_buffer[12];
+								pos.alt=*(float*)&_packet_buffer[16];
 								fix=_packet_buffer[20];
 								sats=_packet_buffer[21];
 								course=*(float*)&_packet_buffer[22];
@@ -187,9 +190,9 @@ class uav
 			status.set("sd",static_cast<int>(static_cast<unsigned char>(sd)));
 			status.set("jpg",static_cast<int>(static_cast<unsigned char>(jpg)));
 			status.set("nex",static_cast<int>(static_cast<unsigned char>(nex)));
-			status.set("lat",lat);
-			status.set("lng",lng);
-			status.set("alt",alt);
+			status.set("lat",pos.lat);
+			status.set("lng",pos.lng);
+			status.set("alt",pos.alt);
 			status.set("fix",static_cast<int>(fix));
 			status.set("course",course);
 			status.set("speed",speed);
@@ -240,9 +243,7 @@ class uav
 		char sd;
 		char jpg;
 		char nex;
-		float lat;
-		float lng;
-		float alt;
+		location pos;
 		char fix;
 		char sats;
 		float course;
@@ -399,7 +400,7 @@ void service_client(msl::socket& client,const std::string& message)
 								}
 							}
 
-							if(found_id||msl::to_int(object.get("id"))==0)
+							if(found_id||msl::to_int(object.get("id"))<=0||msl::to_int(object.get("id"))>255)
 							{
 								client<<msl::http_pack_string("invalid id",mime_type);
 							}
@@ -454,9 +455,6 @@ void service_client(msl::socket& client,const std::string& message)
 									if(uavs[jj].id==uav_id)
 									{
 										uav_index=jj;
-										//TEST!
-										//uavs[uav_index].lat+=0.00001;
-										//uavs[uav_index]._nex_locations[uavs[uav_index]._nex_locations.size()]=location(uavs[uav_index].lat,uavs[uav_index].lng,uavs[uav_index].alt);
 										break;
 									}
 								}
