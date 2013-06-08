@@ -2,12 +2,24 @@
 #include "msl/file_util.hpp"
 #include <iostream>
 #include "msl/json.hpp"
+#include <map>
 #include "msl/serial.hpp"
 #include "msl/socket.hpp"
 #include "msl/socket_util.hpp"
 #include <string>
 #include "msl/string_util.hpp"
 #include <vector>
+
+class location
+{
+	public:
+		location(const float LAT=0.0,const float LNG=0.0,const float ALT=0.0):lat(LAT),lng(LNG),alt(ALT)
+		{}
+
+		float lat;
+		float lng;
+		float alt;
+};
 
 char calculate_crc(const std::string& packet)
 {
@@ -80,40 +92,11 @@ class uav
 					_packet_buffer+=read_byte;
 
 					if(_packet_buffer.size()==static_cast<unsigned int>(_packet_buffer[4])+5)
-						_packet_state=10;
-				}
-
-				//Get Response Packet
-				else if(_packet_state==0&&read_byte=='r')
-				{
-					_packet_buffer+=read_byte;
-					_packet_state=6;
-				}
-				else if(_packet_state==6&&read_byte=='e')
-				{
-					_packet_buffer+=read_byte;
-					_packet_state=7;
-				}
-				else if(_packet_state==7&&read_byte=='s')
-				{
-					_packet_buffer+=read_byte;
-					_packet_state=8;
-				}
-				else if(_packet_state==8)
-				{
-					_packet_buffer+=read_byte;
-					_packet_state=9;
-				}
-				else if(_packet_state==9)
-				{
-					_packet_buffer+=read_byte;
-
-					if(_packet_buffer.size()==6)
-						_packet_state=10;
+						_packet_state=6;
 				}
 
 				//CRC Check
-				else if(_packet_state==10)
+				else if(_packet_state==6)
 				{
 					if(read_byte==calculate_crc(_packet_buffer))
 					{
@@ -132,7 +115,6 @@ class uav
 								course=*(float*)&_packet_buffer[22];
 								speed=*(float*)&_packet_buffer[26];
 							}
-
 							else if(_packet_buffer[3]==2)
 							{
 								if(*(short*)&_packet_buffer[5]==_jpg_seq)
@@ -142,7 +124,7 @@ class uav
 
 									if(static_cast<short>(_jpg_data.size())==*(short*)&_packet_buffer[7])
 									{
-										std::string filename=msl::to_string(id);
+										std::string filename=msl::to_string(static_cast<unsigned int>(static_cast<unsigned char>(id)));
 										while(filename.size()<3)
 											filename.insert(0,"0");
 
@@ -157,7 +139,14 @@ class uav
 									_jpg_seq=0;
 								}
 							}
-
+							else if(_packet_buffer[3]==3)
+							{
+								short nex_seq=*(short*)&_packet_buffer[5];
+								float nex_lat=*(float*)&_packet_buffer[7];
+								float nex_lng=*(float*)&_packet_buffer[11];
+								float nex_alt=*(float*)&_packet_buffer[15];
+								_nex_locations[nex_seq]=location(nex_lat,nex_lng,nex_alt);
+							}
 							else
 							{
 								std::cout<<"unknown packet id"<<std::endl;
@@ -207,13 +196,30 @@ class uav
 			response.set("status",status.str());
 
 			msl::json jpg_camera;
-			jpg_camera.set("width",160);
-			jpg_camera.set("height",120);
-			jpg_camera.set("src","/test.jpg");
+			std::string jpg_filename=msl::to_string(static_cast<unsigned int>(static_cast<unsigned char>(id)));
+
+			while(jpg_filename.size()<3)
+				jpg_filename.insert(0,"0");
+
+			jpg_camera.set("src","jpg_"+jpg_filename+".jpg");
 			response.set("jpg",jpg_camera.str());
 
 			msl::json nex_camera;
-			nex_camera.set("size",0);
+			nex_camera.set("size",_nex_locations.size());
+
+			unsigned int nex_count=0;
+
+			for(std::map<short,location>::const_iterator iter=_nex_locations.begin();iter!=_nex_locations.end();++iter)
+			{
+				msl::json loc_json;
+				loc_json.set("seq",iter->first);
+				loc_json.set("lat",iter->second.lat);
+				loc_json.set("lng",iter->second.lng);
+				loc_json.set("alt",iter->second.alt);
+				nex_camera.set(msl::to_string(nex_count),loc_json.str());
+				++nex_count;
+			}
+
 			response.set("nex",nex_camera.str());
 
 			return response.str();
@@ -243,6 +249,7 @@ class uav
 		float speed;
 		std::string _jpg_data;
 		short _jpg_seq;
+		std::map<short,location> _nex_locations;
 };
 
 void service_client(msl::socket& client,const std::string& message);
@@ -448,7 +455,8 @@ void service_client(msl::socket& client,const std::string& message)
 									{
 										uav_index=jj;
 										//TEST!
-										uavs[uav_index].lat+=0.00001;
+										//uavs[uav_index].lat+=0.00001;
+										//uavs[uav_index]._nex_locations[uavs[uav_index]._nex_locations.size()]=location(uavs[uav_index].lat,uavs[uav_index].lng,uavs[uav_index].alt);
 										break;
 									}
 								}
@@ -461,6 +469,13 @@ void service_client(msl::socket& client,const std::string& message)
 									{
 										client<<msl::http_pack_string(uavs[uav_index].info(),mime_type);
 									}
+								}
+								else if(variable=="serial")
+								{
+									if(msl::to_bool(value))
+										uavs[uav_index].setup_serial();
+									else
+										uavs[uav_index].close();
 								}
 								else if(variable=="radio")
 								{
@@ -488,6 +503,16 @@ void service_client(msl::socket& client,const std::string& message)
 		//File Requests
 		else
 		{
+			//Check for ?
+			for(unsigned int ii=0;ii<request.size();++ii)
+			{
+				if(request[ii]=='?')
+				{
+					request=request.substr(0,ii);
+					break;
+				}
+			}
+
 			//Check for Code Mime Type
 			if(msl::ends_with(request,".js"))
 				mime_type="application/x-javascript";

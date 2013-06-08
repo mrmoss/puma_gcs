@@ -110,7 +110,9 @@
 				if(uavs.length>0)
 				{
 					var button_connect_begin=" <input type=\"button\" style=\"width:100%;\" value=\"";
-					var button_connect_end="\" onclick=\"this.disabled=true\"/>";
+					var button_connect_end_begin="\" onclick=\"this.disabled=true;connect_uav(";
+					var button_disconnect_end_begin="\" onclick=\"this.disabled=true;disconnect_uav(";
+					var button_connect_end_end=");\"/>";
 					var button_remove_begin=" <input type=\"button\" style=\"width:100%;\" value=\"";
 					var button_remove_end_begin="\" onclick=\"remove_entry("
 					var button_remove_end_end=");\"/>";
@@ -120,8 +122,9 @@
 					html+="<col span=\"1\" style=\"width:32px;\">";
 					html+="<col span=\"1\" style=\"width:128px;\">";
 					html+="<col span=\"1\" style=\"width:64px;\">";
+					html+="<col span=\"1\" style=\"width:128px;\">";
 					html+="<col span=\"1\" style=\"width:96px;\">";
-					html+="<col span=\"1\" style=\"width:80px;\">";
+					html+="<col span=\"1\" style=\"width:96px;\">";
 					html+="</colgroup>";
 					html+="<tr>";
 					html+="<td>"+"id"+"</td>";
@@ -140,9 +143,9 @@
 						html+="<td>"+uavs[ii].obj.status.serial_baud+"</td>";
 
 						if(uavs[ii].obj.status.serial_status==0)
-							html+="<td>"+"disconnected"+"</td><td>"+button_connect_begin+"connect"+button_connect_end+"</td>";
+							html+="<td>"+"disconnected"+"</td><td>"+button_connect_begin+"connect"+button_connect_end_begin+uavs[ii].obj.status.id+button_connect_end_end+"</td>";
 						else
-							html+="<td>"+"connected"+"</td><td>"+button_connect_begin+"disconnect"+button_connect_end+"</td>";
+							html+="<td>"+"connected"+"</td><td>"+button_connect_begin+"disconnect"+button_disconnect_end_begin+uavs[ii].obj.status.id+button_connect_end_end+"</td>";
 
 						html+="<td>"+button_remove_begin+"remove"+button_remove_end_begin+uavs[ii].obj.status.id+button_remove_end_end+"</td>";
 
@@ -157,6 +160,20 @@
 				document.getElementById("entry_port").disabled=false;
 				document.getElementById("entry_baud").disabled=false;
 				document.getElementById("entry_add").disabled=false;
+			}
+
+			function connect_uav(id)
+			{
+				var xmlhttp=new XMLHttpRequest();
+				xmlhttp.open("GET",encodeURIComponent("&id="+id+"&serial=1"),true);
+				xmlhttp.send(null);
+			}
+
+			function disconnect_uav(id)
+			{
+				var xmlhttp=new XMLHttpRequest();
+				xmlhttp.open("GET",encodeURIComponent("&id="+id+"&serial=0"),true);
+				xmlhttp.send(null);
 			}
 
 			function add_entry()

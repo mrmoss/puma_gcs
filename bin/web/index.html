@@ -4,6 +4,7 @@
 		<script type="text/javascript">
 			var map;
 			var uavs=new Array();
+			var jpg_buffer_index=0;
 
 			function initialize()
 			{
@@ -65,7 +66,12 @@
 
 									if(!found)
 									{
-										uavs[ii].marker.setVisible(false);
+										uavs[ii].marker.setMap(null);
+
+										for(var jj=0;jj<uavs[ii]["nex_location_markers"].length;++jj)
+										{
+											uavs[ii]["nex_location_markers"][jj].setMap(null);
+										}
 
 										for(var jj=0;jj<document.getElementById("uav_select").options.length;++jj)
 										{
@@ -116,7 +122,26 @@
 									{
 										found=true;
 										uavs[ii].obj=return_json;
+
+										var new_marker_array=new Array();
+
+										for(var jj=0;jj<return_json.nex.size;++jj)
+										{
+											new_marker_array[jj]=new google.maps.Marker();
+											new_marker_array[jj].setClickable(true);
+											new_marker_array[jj].setPosition(new google.maps.LatLng(return_json.nex[jj].lat,return_json.nex[jj].lng));
+											new_marker_array[jj].setMap(map);
+											new_marker_array[jj].setTitle(return_json.nex[jj].seq);
+										}
+
+										for(var jj=0;jj<uavs[ii]["nex_location_markers"].length;++jj)
+											uavs[ii]["nex_location_markers"][jj].setMap(null);
+
+										uavs[ii]["nex_location_markers"]=new_marker_array;
+
 										uavs[ii].marker.setPosition(new google.maps.LatLng(return_json.status.lat,return_json.status.lng));
+										uavs[ii].marker.setZIndex(40000);
+
 										break;
 									}
 								}
@@ -124,7 +149,23 @@
 								if(!found)
 								{
 									document.getElementById("uav_select").options.add(new Option(return_json.status.id));
-									uavs.push({"obj":return_json,"marker":new google.maps.Marker({clickable:false,position:new google.maps.LatLng(return_json.status.lat,return_json.status.lng),map:map,icon:{url:"img/plane_good.png"}})});
+									var new_uav={};
+									new_uav["obj"]=return_json;
+									new_uav["nex_location_markers"]=new Array();
+
+									for(var ii=0;ii<return_json.nex.size;++ii)
+									{
+										new_uav["nex_location_markers"][ii]=new google.maps.Marker();
+										new_uav["nex_location_markers"][ii].setClickable(true);
+										new_uav["nex_location_markers"][ii].setPosition(new google.maps.LatLng(return_json.nex[ii].lat,return_json.nex[ii].lng));
+										new_uav["nex_location_markers"][ii].setMap(map);
+										new_uav["nex_location_markers"][ii].setTitle(return_json.nex[ii].seq);
+									}
+
+									new_uav["marker"]=new google.maps.Marker({clickable:false,position:new google.maps.LatLng(return_json.status.lat,return_json.status.lng),map:map,icon:{url:"img/plane_good.png"}});
+									new_uav["marker"].setZIndex(40000);
+
+									uavs.push(new_uav);
 								}
 
 								view_uav();
@@ -191,6 +232,30 @@
 								map.setOptions({draggable:true});
 							}
 
+							if(uavs[ii].obj.jpg.src&&document.getElementById("jpg").checked)
+							{
+								try
+								{
+									if(jpg_buffer_index==0)
+									{
+										document.getElementById("uav_preview_0").src=uavs[ii].obj.jpg.src+"?"+new Date().getTime();
+										document.getElementById("uav_preview_0").width=160;
+									}
+									else
+									{
+										document.getElementById("uav_preview_1").src=uavs[ii].obj.jpg.src+"?"+new Date().getTime();
+										document.getElementById("uav_preview_1").width=160;
+									}
+								}
+								catch(e)
+								{}
+							}
+							else
+							{
+								document.getElementById("uav_preview_0").width=0;
+								document.getElementById("uav_preview_1").width=0;
+							}
+
 							return;
 						}
 					}
@@ -210,6 +275,8 @@
 				document.getElementById("fix").innerHTML="none";
 				document.getElementById("course").innerHTML="0";
 				document.getElementById("speed").innerHTML="0";
+				document.getElementById("uav_preview_0").width=0;
+				document.getElementById("uav_preview_1").width=0;
 				map.setOptions({draggable:true});
 			}
 
@@ -252,6 +319,22 @@
 						xmlhttp.send(null);
 						break;
 					}
+				}
+			}
+
+			function jpg_swap_buffer()
+			{
+				if(jpg_buffer_index==0)
+				{
+					document.getElementById("uav_preview_0").style.zIndex="-1";
+					document.getElementById("uav_preview_1").style.zIndex="0";
+					jpg_buffer_index=1;
+				}
+				else
+				{
+					document.getElementById("uav_preview_0").style.zIndex="0";
+					document.getElementById("uav_preview_1").style.zIndex="-1";
+					jpg_buffer_index=0;
 				}
 			}
 		</script>
@@ -311,5 +394,7 @@
 				</td>
 			</tr>
 		</table>
+		<img id="uav_preview_0" style="position:absolute;left:3px;top:3px;" src="" onload="jpg_swap_buffer()" width="160" height="120"></img>
+		<img id="uav_preview_1" style="position:absolute;left:3px;top:3px;" src="" onload="jpg_swap_buffer()" width="160" height="120"></img>
 	</body>
 </html>

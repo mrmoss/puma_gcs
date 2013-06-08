@@ -76,16 +76,15 @@ From GCS to Web Client
 		,
 		"jpg":
 		{
-			"width":jpg width,
-			"height":jpg height,
 			"src":url of image
 		}
 		,
 		"nex":
 		{
 			"size":number of images taken (note there may not be this many images in this object)
-			PIC_NUM (note these may not be contiguous, could go 4, 6, 10, 22, 1000, etc...):
+			PIC_NUM
 			{
+				"seq":sequence of picture,
 				"lat":lat of picture,
 				"lng":lng of picture,
 				"alt":alt of picture
