@@ -64,6 +64,7 @@ From GCS to Web Client
 		{
 			"id":num,
 			"sd":sd flags,
+			"radio":radio status,
 			"jpg":jpg flags,
 			"nex":nex flags,
 			"lat":current gps lat location,
@@ -107,11 +108,11 @@ From Web Client to GCS
 	&jpg_camera=IO								If IO is not 0 GCS turns on jpg camera, no response.
 	&nex_camera=IO								If IO is not 0 GCS turns on nex_camera, no response.
 
-	Example 1:									&uav=3&status=1&radio=1&jpg_camera=1&nex_camera=1
+	Example 1:									&id=3&status=1&radio=1&jpg_camera=1&nex_camera=1
 												Asks for a heartbeat update for uav 3, then turns the radio on for uav 3, then turns on the jpg camera on for uav 3, and lastly turns on the nex camera on for uav 3.
 												The uav field must be set first or you will not get a response from the server.
 												Order doesn't really matter for the commands, but they are executed in order.
 
-	Example 2:									&uav=3&status=1&uav=6&radio=1
+	Example 2:									&id=3&status=1&uav=6&radio=1
 												Asks for a heartbeat update for uav 3 and then turns the radio on for uav 6.
 												Note you can get/set to multiple uavs.

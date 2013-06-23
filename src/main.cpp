@@ -329,19 +329,19 @@ void service_client(msl::socket& client,const std::string& message)
 								//Radio Command
 								else if(variable=="radio")
 								{
-									uavs[uav_index].change_hw(1,msl::to_bool(value));
+									uavs[uav_index].set_hw(1,msl::to_bool(value));
 								}
 
 								//JPG Camera Command
 								else if(variable=="jpg_camera")
 								{
-									uavs[uav_index].change_hw(2,msl::to_bool(value));
+									uavs[uav_index].set_hw(2,msl::to_bool(value));
 								}
 
 								//NEX Camera Command
 								else if(variable=="nex_camera")
 								{
-									uavs[uav_index].change_hw(3,msl::to_bool(value));
+									uavs[uav_index].set_hw(3,msl::to_bool(value));
 								}
 							}
 						}

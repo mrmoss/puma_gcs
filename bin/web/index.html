@@ -205,8 +205,9 @@
 							else
 								document.getElementById("sd").innerHTML="good";
 
-							document.getElementById("jpg").checked=uavs[ii].obj.status.jpg;
-							document.getElementById("nex").checked=uavs[ii].obj.status.nex;
+							document.getElementById("radio").checked=(uavs[ii].obj.status.radio!=0);
+							document.getElementById("jpg").checked=(uavs[ii].obj.status.jpg!=0);
+							document.getElementById("nex").checked=(uavs[ii].obj.status.nex!=0);
 
 							document.getElementById("lat").innerHTML=uavs[ii].obj.status.lat;
 							document.getElementById("lng").innerHTML=uavs[ii].obj.status.lng;
@@ -267,6 +268,7 @@
 				}
 
 				document.getElementById("sd").innerHTML="error";
+				document.getElementById("radio").checked=false;
 				document.getElementById("jpg").checked=false;
 				document.getElementById("nex").checked=false;
 				document.getElementById("lat").innerHTML="nan";
@@ -278,6 +280,27 @@
 				document.getElementById("uav_preview_0").width=0;
 				document.getElementById("uav_preview_1").width=0;
 				map.setOptions({draggable:true});
+			}
+
+			function change_radio()
+			{
+				var index=document.getElementById("uav_select").selectedIndex;
+
+				for(var ii=0;ii<uavs.length;++ii)
+				{
+					if(uavs[ii].obj.status.id.toString()==document.getElementById("uav_select").options[index].value.toString())
+					{
+						var state=0;
+
+						if(document.getElementById("radio").checked)
+							state=1;
+
+						var xmlhttp=new XMLHttpRequest();
+						xmlhttp.open("GET",encodeURIComponent("&id="+uavs[ii].obj.status.id.toString()+"&radio="+state),true);
+						xmlhttp.send(null);
+						break;
+					}
+				}
 			}
 
 			function change_jpg()
@@ -373,6 +396,7 @@
 							<td>course(deg)</td>
 							<td>speed(kn)</td>
 							<td>follow</td>
+							<td>radio</td>
 							<td>jpg</td>
 							<td>nex</td>
 							<td></td>
@@ -387,6 +411,7 @@
 							<td><div id="course"></div></td>
 							<td><div id="speed"></div></td>
 							<td><input type="checkbox" id="follow" checked/></td>
+							<td><input type="checkbox" id="radio" onchange="change_radio();" checked/></td>
 							<td><input type="checkbox" id="jpg" onchange="change_jpg();" checked/></td>
 							<td><input type="checkbox" id="nex" onchange="change_nex();" checked/></td>
 						</tr>

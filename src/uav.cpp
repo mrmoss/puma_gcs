@@ -14,9 +14,13 @@
 //JSON Header
 #include "msl/json.hpp"
 
+//Time Utility Header
+#include "msl/time_util.hpp"
+
 //UAV Constructor (Default)
 uav::uav(const unsigned char id,const std::string serial_port,const unsigned int serial_baud):_id(id),_serial_port(serial_port),_serial_baud(serial_baud),
-	_packet_state(0),_packet_buffer(""),_sd(0),_jpg(0),_nex(0),_pos(0.0,0.0,0.0),_fix(0),_sats(0),_course(0.0),_speed(0.0)
+	_packet_state(0),_packet_buffer(""),_sd(0),_hw_timer(msl::millis()),_radio_desired_state(false),_jpg_desired_state(false),_nex_desired_state(false),_jpg(0),
+	_nex(0),_pos(0.0,0.0,0.0),_fix(0),_sats(0),_course(0.0),_speed(0.0)
 {}
 
 //Update Function (Checks for bytes on radio and updates members)
@@ -161,6 +165,15 @@ void uav::update()
 			_packet_buffer="";
 		}
 	}
+
+	//Update Hardware States
+	if(msl::millis()-_hw_timer>=200)
+	{
+		change_hw(0x01,_radio_desired_state);
+		change_hw(0x02,_jpg_desired_state);
+		change_hw(0x03,_nex_desired_state);
+		_hw_timer=msl::millis();
+	}
 }
 
 //Connect Function (Connect to serial and returns result).
@@ -183,6 +196,23 @@ void uav::close()
 		_serial.close();
 }
 
+//Set Hardware Function (Changes the desired state of hardware, 1 is radio,
+//	2 is the JPG camera and 3 is the NEX camera)
+void uav::set_hw(const unsigned char id,const bool state)
+{
+	//Radio
+	if(id==0x01)
+		_radio_desired_state=state;
+
+	//JPG Camera
+	else if(id==0x02)
+		_jpg_desired_state=state;
+
+	//NEX Camera
+	else if(id==0x03)
+		_nex_desired_state=state;
+}
+
 //Change Hardware Function (Changes the state of hardware over the radio, 1 is radio,
 //	2 is the JPG camera and 3 is the NEX camera)
 void uav::change_hw(const unsigned char id,const bool state)
@@ -199,7 +229,7 @@ void uav::change_hw(const unsigned char id,const bool state)
 		//Add Paylod Size
 		packet+=static_cast<char>(0x01);
 
-		//Add Radio State
+		//Add State
 		if(!state)
 			packet+=static_cast<char>(0x00);
 		else
@@ -226,8 +256,9 @@ std::string uav::json() const
 	status.set("serial_baud",_serial_baud);
 	status.set("serial_status",static_cast<unsigned int>(_serial.good()));
 	status.set("sd",static_cast<unsigned int>(_sd));
-	status.set("jpg",static_cast<unsigned int>(_jpg));
-	status.set("nex",static_cast<unsigned int>(_nex));
+	status.set("radio",static_cast<unsigned int>(_radio_desired_state));
+	status.set("jpg",static_cast<unsigned int>(_jpg_desired_state));
+	status.set("nex",static_cast<unsigned int>(_nex_desired_state));
 	status.set("lat",_pos.lat);
 	status.set("lng",_pos.lng);
 	status.set("alt",_pos.alt);

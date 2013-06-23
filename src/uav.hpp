@@ -31,6 +31,10 @@ class uav
 		//Close Function (Closes and releases serial port)
 		void close();
 
+		//Set Hardware Function (Changes the desired state of hardware, 1 is radio,
+		//	2 is the JPG camera and 3 is the NEX camera)
+		void set_hw(const unsigned char id,const bool state);
+
 		//Change Hardware Function (Changes the state of hardware over the radio, 1 is radio,
 		//	2 is the JPG camera and 3 is the NEX camera)
 		void change_hw(const unsigned char id,const bool state);
@@ -53,6 +57,10 @@ class uav
 			int _packet_state;
 			std::string _packet_buffer;
 			unsigned char _sd;
+			long _hw_timer;
+			bool _radio_desired_state;
+			bool _jpg_desired_state;
+			bool _nex_desired_state;
 			unsigned char _jpg;
 			unsigned char _nex;
 			location _pos;
