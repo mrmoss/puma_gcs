@@ -167,11 +167,20 @@ void uav::update()
 	}
 
 	//Update Hardware States
-	if(msl::millis()-_hw_timer>=200)
+	if(msl::millis()-_hw_timer>=1000)
 	{
+		//Update Radio
 		change_hw(0x01,_radio_desired_state);
-		change_hw(0x02,_jpg_desired_state);
-		change_hw(0x03,_nex_desired_state);
+
+		//Update JPG Camera
+		if((_jpg!=0&&_jpg_desired_state)||(_jpg==0&&!_jpg_desired_state))
+			change_hw(0x02,_jpg_desired_state);
+
+		//Update NEX Camera
+		if((_nex!=0&&_nex_desired_state)||(_nex==0&&!_nex_desired_state))
+			change_hw(0x03,_nex_desired_state);
+
+		//Update Timer
 		_hw_timer=msl::millis();
 	}
 }

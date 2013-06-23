@@ -11,6 +11,9 @@
 //JSON Header
 #include "msl/json.hpp"
 
+//Serial Utility Header
+#include "msl/serial_util.hpp"
+
 //Socket Header
 #include "msl/socket.hpp"
 
@@ -38,6 +41,11 @@ std::vector<uav> uavs;
 //Main
 int main(int argc, char* argv[])
 {
+	std::vector<std::string> port_list=msl::list_serial_ports();
+
+	for(unsigned int ii=0;ii<port_list.size();++ii)
+		std::cout<<port_list[ii]<<std::endl;
+
 	//Default Port is 8080
 	std::string server_port="8080";
 
