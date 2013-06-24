@@ -173,11 +173,11 @@ void uav::update()
 		change_hw(0x01,_radio_desired_state);
 
 		//Update JPG Camera
-		if((_jpg!=0&&_jpg_desired_state)||(_jpg==0&&!_jpg_desired_state))
+		if(static_cast<bool>(_jpg)!=_jpg_desired_state)
 			change_hw(0x02,_jpg_desired_state);
 
 		//Update NEX Camera
-		if((_nex!=0&&_nex_desired_state)||(_nex==0&&!_nex_desired_state))
+		if(static_cast<bool>(_nex)!=_nex_desired_state)
 			change_hw(0x03,_nex_desired_state);
 
 		//Update Timer
@@ -209,6 +209,8 @@ void uav::close()
 //	2 is the JPG camera and 3 is the NEX camera)
 void uav::set_hw(const unsigned char id,const bool state)
 {
+	//std::cout<<"Setting desired hardware setting of id "<<std::hex<<(unsigned short)id<<" to "<<std::dec<<state<<std::endl;
+
 	//Radio
 	if(id==0x01)
 		_radio_desired_state=state;
