@@ -7,7 +7,8 @@ Installing the server:
 	Windows:	gcs.exe 8080
 	Linux/Mac:	./gcs 8080
 
-	This is meant to be run on a server for multiple clients can connect to it.  It would be better to add this program to the startup applications.
+	This is meant to be run on a server for multiple clients can connect to it.
+	It would be better to add this program to the startup applications.
 	Windows:	Add to startup folder.
 	Linux:		Add to /etc/rc.local file.
 	Mac:		ERR...ADD LATER...
