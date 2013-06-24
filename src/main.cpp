@@ -41,11 +41,6 @@ std::vector<uav> uavs;
 //Main
 int main(int argc, char* argv[])
 {
-	std::vector<std::string> port_list=msl::list_serial_ports();
-
-	for(unsigned int ii=0;ii<port_list.size();++ii)
-		std::cout<<port_list[ii]<<std::endl;
-
 	//Default Port is 8080
 	std::string server_port="8080";
 
@@ -262,6 +257,33 @@ void service_client(msl::socket& client,const std::string& message)
 							}
 
 							//Removing an UAV Closes the Message Stream
+							break;
+						}
+
+						//Serials Request (Get list of valid serial ports)
+						else if(variable=="serials")
+						{
+							//If Value is True
+							if(msl::to_bool(value))
+							{
+								//Get Serial Port Listing
+								std::vector<std::string> serial_list=msl::list_serial_ports();
+
+								//Create Response JSON
+								msl::json response;
+
+								//Add Serial Port Listing Size to Response
+								response.set("size",serial_list.size());
+
+								//Add Serial Port Listings to Response
+								for(unsigned int jj=0;jj<serial_list.size();++jj)
+									response.set(msl::to_string(jj),serial_list[jj]);
+
+								//Send Response
+								client<<msl::http_pack_string(response.str(),mime_type);
+							}
+
+							//Getting Serials Closes the Message Stream
 							break;
 						}
 

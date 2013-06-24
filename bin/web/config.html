@@ -5,7 +5,61 @@
 
 			function initialize()
 			{
+				setInterval(serial_update,1000);
 				setInterval(uav_update,1000);
+
+				for(var ii=0;ii<255;++ii)
+					document.getElementById("entry_id").options[ii]=new Option(ii+1);
+			}
+
+			function serial_update()
+			{
+				var xmlhttp=new XMLHttpRequest();
+
+				xmlhttp.onreadystatechange=function()
+				{
+					if(xmlhttp.readyState==4&&xmlhttp.status==200)
+					{
+						try
+						{
+							var return_json=JSON.parse(xmlhttp.responseText);
+
+							if(return_json)
+							{
+								var selected_index=document.getElementById("entry_port").selectedIndex;
+								var selected_value="";
+
+								if(selected_index>=0)
+									selected_value=document.getElementById("entry_port").options[selected_index].value;
+
+								for(var ii=0;ii<return_json.size;++ii)
+									document.getElementById("entry_port").options[ii]=new Option(return_json[ii]);
+
+								document.getElementById("entry_port").options.length=return_json.size;
+
+								var found=false;
+
+								for(var ii=0;ii<return_json.size;++ii)
+								{
+									if(document.getElementById("entry_port").options[ii].value==selected_value)
+									{
+										found=true;
+										document.getElementById("entry_port").selectedIndex=ii;
+										break;
+									}
+								}
+
+								if(!found)
+									document.getElementById("entry_port").selectedIndex=0;
+							}
+						}
+						catch(e)
+						{}
+					}
+				}
+
+				xmlhttp.open("GET",encodeURIComponent("&serials=1"),true);
+				xmlhttp.send(null);
 			}
 
 			function uav_update()
@@ -184,9 +238,15 @@
 				document.getElementById("entry_add").disabled=true;
 
 				var response={};
-				response.id=document.getElementById("entry_id").value;
-				response.port=document.getElementById("entry_port").value;
-				response.baud=document.getElementById("entry_baud").value;
+
+				var id_index=document.getElementById("entry_id").selectedIndex;
+				response.id=document.getElementById("entry_id").options[id_index].value.toString();
+
+				var port_index=document.getElementById("entry_port").selectedIndex;
+				response.port=document.getElementById("entry_port").options[port_index].value.toString();
+
+				var baud_index=document.getElementById("entry_baud").selectedIndex;
+				response.baud=document.getElementById("entry_baud").options[baud_index].value.toString();
 
 				var xmlhttp=new XMLHttpRequest();
 
@@ -231,9 +291,21 @@
 							<td></td>
 						</tr>
 						<tr>
-							<td><input type="text" style="width:100%;" id="entry_id"/></td>
-							<td><input type="text" style="width:100%;" id="entry_port"/></td>
-							<td><input type="text" style="width:100%;" id="entry_baud"/></td>
+							<td><select id="entry_id"></select></td>
+							<td><select id="entry_port"></select></td>
+							<td>
+								<select id="entry_baud">
+									<option>300</option>
+									<option>1200</option>
+									<option>2400</option>
+									<option>4800</option>
+									<option>9600</option>
+									<option>19200</option>
+									<option>38400</option>
+									<option selected>57600</option>
+									<option>115200</option>
+								</select>
+							</td>
 							<td><input type="button" style="width:100%;" id="entry_add" value="add" onclick="add_entry();"/></td>
 						</tr>
 					</table>

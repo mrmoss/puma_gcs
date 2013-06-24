@@ -208,6 +208,9 @@
 							document.getElementById("radio").checked=(uavs[ii].obj.status.radio!=0);
 							document.getElementById("jpg").checked=(uavs[ii].obj.status.jpg!=0);
 							document.getElementById("nex").checked=(uavs[ii].obj.status.nex!=0);
+							document.getElementById("radio").disabled=false;
+							document.getElementById("jpg").disabled=false;
+							document.getElementById("nex").disabled=false;
 
 							document.getElementById("lat").innerHTML=uavs[ii].obj.status.lat;
 							document.getElementById("lng").innerHTML=uavs[ii].obj.status.lng;
@@ -271,6 +274,9 @@
 				document.getElementById("radio").checked=false;
 				document.getElementById("jpg").checked=false;
 				document.getElementById("nex").checked=false;
+				document.getElementById("radio").disabled=true;
+				document.getElementById("jpg").disabled=true;
+				document.getElementById("nex").disabled=true;
 				document.getElementById("lat").innerHTML="nan";
 				document.getElementById("lng").innerHTML="nan";
 				document.getElementById("alt").innerHTML="nan";
@@ -410,10 +416,10 @@
 							<td><div id="fix"></div></td>
 							<td><div id="course"></div></td>
 							<td><div id="speed"></div></td>
-							<td><input type="checkbox" id="follow" checked/></td>
-							<td><input type="checkbox" id="radio" onchange="change_radio();" checked/></td>
-							<td><input type="checkbox" id="jpg" onchange="change_jpg();" checked/></td>
-							<td><input type="checkbox" id="nex" onchange="change_nex();" checked/></td>
+							<td><input type="checkbox" id="follow" checked disabled/></td>
+							<td><input type="checkbox" id="radio" onchange="change_radio();" checked disabled/></td>
+							<td><input type="checkbox" id="jpg" onchange="change_jpg();" checked disabled/></td>
+							<td><input type="checkbox" id="nex" onchange="change_nex();" checked disabled/></td>
 						</tr>
 					</table>
 				</td>

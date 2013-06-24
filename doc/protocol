@@ -98,6 +98,7 @@ From GCS to Web Client
 ######################
 From Web Client to GCS
 ######################
+	&serials=IO									If IO is not 0 GCS responds with an array with the available serial ports of the GCS, kills the connection right after this!
 	&add={"id":ID,"port":PORT,"baud":BAUD}		Adds the uav with the given arguments, kills the connection right after this!
 	&remove=ID									Removes the uav with the give id, , kills the connection right after this!
 	&uavs=IO									If IO is not 0 GCS responds with an array with the ids of the uavs, kills the connection right after this!
