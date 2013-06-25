@@ -1,0 +1,107 @@
+<html style="width:100%;height:100%;">
+	<head>
+		<script type="text/javascript">
+			var uav_list={};
+
+			function initialize()
+			{
+				setInterval(uav_update,500);
+				setInterval(uav_log,500);
+			}
+
+			function uav_update()
+			{
+				var xmlhttp=new XMLHttpRequest();
+
+				xmlhttp.onreadystatechange=function()
+				{
+					if(xmlhttp.readyState==4&&xmlhttp.status==200)
+					{
+						try
+						{
+							var return_json=JSON.parse(xmlhttp.responseText);
+
+							if(return_json)
+							{
+								uav_list=return_json;
+
+								for(var ii=0;ii<uav_list.size;++ii)
+									document.getElementById("uav_id_select").options[ii]=new Option(uav_list[ii]);
+
+								document.getElementById("uav_id_select").options.length=uav_list.size;
+							}
+						}
+						catch(e)
+						{}
+					}
+				}
+
+				xmlhttp.open("GET",encodeURIComponent("&uavs=1"),true);
+				xmlhttp.send(null);
+			}
+
+			function uav_log()
+			{
+				var index=document.getElementById("uav_id_select").selectedIndex;
+
+				if(index>=0&&!document.getElementById("uav_debug_pause").checked)
+				{
+					var xmlhttp=new XMLHttpRequest();
+
+					xmlhttp.onreadystatechange=function()
+					{
+						if(xmlhttp.readyState==4&&xmlhttp.status==200)
+						{
+							document.getElementById("uav_debug").value=xmlhttp.responseText;
+							moveCaretToEnd(document.getElementById("uav_debug"));
+						}
+					}
+
+					xmlhttp.open("GET",encodeURIComponent("&id="+document.getElementById("uav_id_select").options[index].value+"&log=1"),true);
+					xmlhttp.send(null);
+				}
+			}
+
+			function uav_log_clear()
+			{
+				document.getElementById("uav_debug").value="";
+			}
+
+			function moveCaretToEnd(el)
+			{
+				if(typeof el.selectionStart == "number")
+				{
+					el.selectionStart = el.selectionEnd = el.value.length;
+				}
+				else if(typeof el.createTextRange != "undefined")
+				{
+					el.focus();
+					var range = el.createTextRange();
+					range.collapse(false);
+					range.select();
+				}
+			}
+		</script>
+	</head>
+	<body onload="initialize();" style="width:100%;height:100%;margin:0;">
+		<title>GCS - Debug</title>
+		<table style="width=100%;height=100%;">
+			<tr>
+				<td style="width:100%;height:32px;">
+					<a href="/">Viewer</a>     <a href="config">Configuration</a>     <a href="debug">Debug</a>
+				</td>
+			</tr>
+			<tr>
+				<td style="width:100%;height:32px;">
+					id <select id="uav_id_select" onchange="uav_log_clear();"></select>
+					<input type="checkbox" id="uav_debug_pause"/>pause
+				</td>
+			</tr>
+			<tr>
+				<td style="width:100%;">
+					<textarea id="uav_debug" rows="20" cols="120" readonly></textarea>
+				</td>
+			</tr>
+		</table>
+	</body>
+</html>

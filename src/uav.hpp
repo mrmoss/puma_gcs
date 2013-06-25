@@ -39,6 +39,9 @@ class uav
 		//	2 is the JPG camera and 3 is the NEX camera)
 		void change_hw(const unsigned char id,const bool state);
 
+		//Log Function (Writes to Log)
+		void log(const std::string& entry,const bool append) const;
+
 		//JSON Function (Builds json object of members)
 		std::string json() const;
 
@@ -72,6 +75,7 @@ class uav
 			std::string _jpg_data;
 			short _jpg_seq;
 			std::map<short,location> _nex_locations;
+			std::string _log_name;
 
 };
 

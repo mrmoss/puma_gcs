@@ -8,6 +8,9 @@
 //CRC Header
 #include "crc.hpp"
 
+//File Stream Header
+#include <fstream>
+
 //File Utility Header
 #include "msl/file_util.hpp"
 
@@ -21,7 +24,17 @@
 uav::uav(const unsigned char id,const std::string serial_port,const unsigned int serial_baud):_id(id),_serial_port(serial_port),_serial_baud(serial_baud),
 	_packet_state(0),_packet_buffer(""),_sd(0),_hw_timer(msl::millis()),_radio_desired_state(false),_jpg_desired_state(false),_nex_desired_state(false),_jpg(0),
 	_nex(0),_pos(0.0,0.0,0.0),_fix(0),_sats(0),_course(0.0),_speed(0.0),_heartbeat_timer(msl::millis())
-{}
+{
+	//Create Log Filename (template is XXX.log)
+	_log_name=msl::to_string(static_cast<unsigned int>(_id));
+	while(_log_name.size()<3)
+		_log_name.insert(0,"0");
+	_log_name.insert(0,"web/");
+	_log_name+=".log";
+
+	//Log
+	log("Created log file.\n",false);
+}
 
 //Update Function (Checks for bytes on radio and updates members)
 void uav::update()
@@ -78,6 +91,7 @@ void uav::update()
 				//Heartbeat Packet
 				if(_packet_buffer[3]==0)
 				{
+					//Extract Heartbeat Information
 					_sd=_packet_buffer[5];
 					_jpg=_packet_buffer[6];
 					_nex=_packet_buffer[7];
@@ -89,6 +103,9 @@ void uav::update()
 					_course=*(float*)&_packet_buffer[22];
 					_speed=*(float*)&_packet_buffer[26];
 					_heartbeat_timer=msl::millis();
+
+					//Log
+					log("Heartbeat @ "+msl::to_string(msl::millis())+"ms\n",true);
 				}
 
 				//JPG Block Packet
@@ -118,13 +135,20 @@ void uav::update()
 							_jpg_data="";
 							_jpg_seq=0;
 						}
+
+						//Log
+						log("Recieved JPG block @ "+msl::to_string(msl::millis())+"ms\n",true);
 					}
 
 					//If Sequences Do Not Match Reset JPG Data Variables
 					else
 					{
+						//Reset JPG Image
 						_jpg_data="";
 						_jpg_seq=0;
+
+						//Log
+						log("Invalid JPG block detected @ "+msl::to_string(msl::millis())+"ms\n",true);
 					}
 				}
 
@@ -139,12 +163,18 @@ void uav::update()
 
 					//Add Location to Location Vector
 					_nex_locations[nex_seq]=location(nex_lat,nex_lng,nex_alt);
+
+					//Log
+					log("Received new NEX location @ "+msl::to_string(msl::millis())+"ms\n",true);
 				}
 
 				//Bad Packet ID(took out debug messages)
 				else
 				{
 					//std::cout<<"unknown packet id"<<std::endl;
+
+					//Log
+					log("Received bad packet id ("+msl::to_string(static_cast<unsigned int>(_packet_buffer[3]))+") @ "+msl::to_string(msl::millis())+"ms\n",true);
 				}
 			}
 
@@ -152,6 +182,9 @@ void uav::update()
 			else
 			{
 				//std::cout<<"bad packet"<<std::endl;
+
+				//Log
+				log("Invalid CRC packet detected @ "+msl::to_string(msl::millis())+"ms\n",true);
 			}
 
 			//Either Way Reset Parse State
@@ -195,6 +228,12 @@ bool uav::connect()
 	//Connect
 	_serial.connect();
 
+	//Log
+	if(_serial.good())
+		log("Connected to serial port.\n",true);
+	else
+		log("Could not connect to serial port.\n",true);
+
 	//Return Result
 	return _serial.good();
 }
@@ -202,8 +241,12 @@ bool uav::connect()
 //Close Function (Closes and releases serial port)
 void uav::close()
 {
+	//Disconnect Serial Port
 	if(_serial.good())
 		_serial.close();
+
+	//Log
+	log("Disconnected from serial port.\n",true);
 }
 
 //Set Hardware Function (Changes the desired state of hardware, 1 is radio,
@@ -232,6 +275,16 @@ void uav::change_hw(const unsigned char id,const bool state)
 	//Check Serial Port
 	if(_serial.good())
 	{
+		//Log
+		log("Sending hardware change ("+msl::to_string(static_cast<unsigned int>(id))+") to ",true);
+
+		if(state)
+			log("true",true);
+		else
+			log("false",true);
+
+		log(" @ "+msl::to_string(msl::millis())+"ms\n",true);
+
 		//Add Header
 		std::string packet="dat";
 
@@ -252,6 +305,23 @@ void uav::change_hw(const unsigned char id,const bool state)
 
 		//Send Packet
 		_serial<<packet;
+	}
+}
+
+//Log Function (Writes to Log)
+void uav::log(const std::string& entry,const bool append) const
+{
+	std::ofstream ostr;
+
+	if(append)
+		ostr.open(_log_name.c_str(),std::fstream::app);
+	else
+		ostr.open(_log_name.c_str());
+
+	if(ostr)
+	{
+		ostr<<entry;
+		ostr.close();
 	}
 }
 

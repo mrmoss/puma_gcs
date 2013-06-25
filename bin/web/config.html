@@ -5,8 +5,8 @@
 
 			function initialize()
 			{
-				setInterval(serial_update,1000);
-				setInterval(uav_update,1000);
+				setInterval(serial_update,500);
+				setInterval(uav_update,500);
 
 				for(var ii=0;ii<255;++ii)
 					document.getElementById("entry_id").options[ii]=new Option(ii+1);
@@ -279,7 +279,7 @@
 		<table style="width=100%;height=100%;">
 			<tr>
 				<td style="width:100%;height:32px;">
-					<a href="/">Viewer</a>     <a href="config">Configuration</a>
+					<a href="/">Viewer</a>     <a href="config">Configuration</a>     <a href="debug">Debug</a>
 				</td>
 			</tr>
 			<tr>

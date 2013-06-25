@@ -260,6 +260,38 @@ void service_client(msl::socket& client,const std::string& message)
 							break;
 						}
 
+						//Log UAV Command
+						else if(variable=="log")
+						{
+							//Look for UAV
+							for(unsigned int jj=0;jj<uavs.size();++jj)
+							{
+								//If UAV is Found
+								if(static_cast<unsigned char>(uavs[jj].id())==static_cast<unsigned char>(msl::to_int(value)))
+								{
+									//Create Log Filename (template is XXX.log)
+									std::string filename=value;
+									while(filename.size()<3)
+										filename.insert(0,"0");
+									filename.insert(0,"web/");
+									filename+=".log";
+
+									//File Data Variable
+									std::string filedata;
+
+									//Get File Data and Send to Client
+									if(msl::file_to_string(filename,filedata))
+										client<<msl::http_pack_string(filedata,mime_type);
+
+									//Break Out of Loop
+									break;
+								}
+							}
+
+							//Removing an UAV Closes the Message Stream
+							break;
+						}
+
 						//Serials Request (Get list of valid serial ports)
 						else if(variable=="serials")
 						{
