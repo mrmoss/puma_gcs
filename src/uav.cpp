@@ -20,7 +20,7 @@
 //UAV Constructor (Default)
 uav::uav(const unsigned char id,const std::string serial_port,const unsigned int serial_baud):_id(id),_serial_port(serial_port),_serial_baud(serial_baud),
 	_packet_state(0),_packet_buffer(""),_sd(0),_hw_timer(msl::millis()),_radio_desired_state(false),_jpg_desired_state(false),_nex_desired_state(false),_jpg(0),
-	_nex(0),_pos(0.0,0.0,0.0),_fix(0),_sats(0),_course(0.0),_speed(0.0)
+	_nex(0),_pos(0.0,0.0,0.0),_fix(0),_sats(0),_course(0.0),_speed(0.0),_heartbeat_timer(msl::millis())
 {}
 
 //Update Function (Checks for bytes on radio and updates members)
@@ -88,6 +88,7 @@ void uav::update()
 					_sats=_packet_buffer[21];
 					_course=*(float*)&_packet_buffer[22];
 					_speed=*(float*)&_packet_buffer[26];
+					_heartbeat_timer=msl::millis();
 				}
 
 				//JPG Block Packet
@@ -276,6 +277,7 @@ std::string uav::json() const
 	status.set("fix",static_cast<unsigned int>(_fix));
 	status.set("course",_course);
 	status.set("speed",_speed);
+	status.set("heartbeat",msl::millis()-_heartbeat_timer);
 	response.set("status",status.str());
 
 	//Create Response JPG Object

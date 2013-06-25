@@ -208,13 +208,14 @@
 							document.getElementById("radio").checked=(uavs[ii].obj.status.radio!=0);
 							document.getElementById("jpg").checked=(uavs[ii].obj.status.jpg!=0);
 							document.getElementById("nex").checked=(uavs[ii].obj.status.nex!=0);
+							document.getElementById("follow").disabled=false;
 							document.getElementById("radio").disabled=false;
 							document.getElementById("jpg").disabled=false;
 							document.getElementById("nex").disabled=false;
-
 							document.getElementById("lat").innerHTML=uavs[ii].obj.status.lat;
 							document.getElementById("lng").innerHTML=uavs[ii].obj.status.lng;
 							document.getElementById("alt").innerHTML=uavs[ii].obj.status.alt;
+							document.getElementById("heartbeat").innerHTML=uavs[ii].obj.status.heartbeat+"ms";
 
 							if(uavs[ii].obj.status.fix==0)
 								document.getElementById("fix").innerHTML="none";
@@ -274,6 +275,7 @@
 				document.getElementById("radio").checked=false;
 				document.getElementById("jpg").checked=false;
 				document.getElementById("nex").checked=false;
+				document.getElementById("follow").disabled=true;
 				document.getElementById("radio").disabled=true;
 				document.getElementById("jpg").disabled=true;
 				document.getElementById("nex").disabled=true;
@@ -369,59 +371,69 @@
 		</script>
 	</head>
 	<body onload="initialize();" style="width:100%;height:100%;margin:0;">
-		<title>GCS - Flight</title>
+		<title>GCS - Viewer</title>
 		<table style="width:100%;height:100%;">
+			<tr>
+				<td style="width:100%;height:32px;">
+					<a href="index.html">Viewer</a>     <a href="config.html">Configuration</a>
+				</td>
+			</tr>
 			<tr>
 				<td style="width:100%;height:100%;">
 					<div style="width:100%;height:100%;" id="map"></div>
 				</td>
 			</tr>
 			<tr>
-				<td style="width:100%;height:10%">
-					<table border="1" style="width:100%">
-						<colgroup>
-							<col span="1" style="width:64px;">
-							<col span="1" style="width:64px;">
-							<col span="1" style="width:100px;">
-							<col span="1" style="width:100px;">
-							<col span="1" style="width:100px;">
-							<col span="1" style="width:64px;">
-							<col span="1" style="width:104px;">
-							<col span="1" style="width:96px;">
-							<col span="1" style="width:48px;">
-							<col span="1" style="width:32px;">
-							<col span="1" style="width:32px;">
-						</colgroup>
-						<tr>
-							<td>uav id</td>
-							<td>sd</td>
-							<td>lat</td>
-							<td>lng</td>
-							<td>alt(m)</td>
-							<td>fix</td>
-							<td>course(deg)</td>
-							<td>speed(kn)</td>
-							<td>follow</td>
-							<td>radio</td>
-							<td>jpg</td>
-							<td>nex</td>
-							<td></td>
-						</tr>
-						<tr>
-							<td><select id="uav_select" onchange="view_uav();"><option>-</option></select></td>
-							<td><div id="sd"></div></td>
-							<td><div id="lat"></div></td>
-							<td><div id="lng"></div></td>
-							<td><div id="alt"></div></td>
-							<td><div id="fix"></div></td>
-							<td><div id="course"></div></td>
-							<td><div id="speed"></div></td>
-							<td><input type="checkbox" id="follow" checked disabled/></td>
-							<td><input type="checkbox" id="radio" onchange="change_radio();" checked disabled/></td>
-							<td><input type="checkbox" id="jpg" onchange="change_jpg();" checked disabled/></td>
-							<td><input type="checkbox" id="nex" onchange="change_nex();" checked disabled/></td>
-						</tr>
-					</table>
+				<td style="width:100%;height:10%;">
+					<center>
+						<table border="1">
+							<colgroup>
+								<col span="1" style="width:64px;">
+								<col span="1" style="width:64px;">
+								<col span="1" style="width:128px;">
+								<col span="1" style="width:128px;">
+								<col span="1" style="width:128px;">
+								<col span="1" style="width:64px;">
+								<col span="1" style="width:104px;">
+								<col span="1" style="width:96px;">
+								<col span="1" style="width:48px;">
+								<col span="1" style="width:32px;">
+								<col span="1" style="width:32px;">
+								<col span="1" style="width:32px;">
+								<col span="1" style="width:96px;">
+							</colgroup>
+							<tr>
+								<td>uav id</td>
+								<td>sd</td>
+								<td>lat</td>
+								<td>lng</td>
+								<td>alt(m)</td>
+								<td>fix</td>
+								<td>course(deg)</td>
+								<td>speed(kn)</td>
+								<td>follow</td>
+								<td>radio</td>
+								<td>jpg</td>
+								<td>nex</td>
+								<td><img src="img/heartbeat.gif" width="30px" height="20px"/></td>
+							</tr>
+							<tr>
+								<td><select id="uav_select" onchange="view_uav();"><option>-</option></select></td>
+								<td><div id="sd"></div></td>
+								<td><div id="lat"></div></td>
+								<td><div id="lng"></div></td>
+								<td><div id="alt"></div></td>
+								<td><div id="fix"></div></td>
+								<td><div id="course"></div></td>
+								<td><div id="speed"></div></td>
+								<td><input type="checkbox" id="follow" checked disabled/></td>
+								<td><input type="checkbox" id="radio" onchange="change_radio();" checked disabled/></td>
+								<td><input type="checkbox" id="jpg" onchange="change_jpg();" checked disabled/></td>
+								<td><input type="checkbox" id="nex" onchange="change_nex();" checked disabled/></td>
+								<td><div id="heartbeat"></div></td>
+							</tr>
+						</table>
+					</center>
 				</td>
 			</tr>
 		</table>

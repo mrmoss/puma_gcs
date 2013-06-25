@@ -72,7 +72,8 @@ From GCS to Web Client
 			"alt":current gps alt location,
 			"fix":current gps fix status,
 			"course":current gps course heading,
-			"speed":current gps speed
+			"speed":current gps speed,
+			"heartbeat":time since last heartbeat in ms
 		}
 		,
 		"jpg":

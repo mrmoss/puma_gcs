@@ -68,6 +68,7 @@ class uav
 			unsigned char _sats;
 			float _course;
 			float _speed;
+			long _heartbeat_timer;
 			std::string _jpg_data;
 			short _jpg_seq;
 			std::map<short,location> _nex_locations;
