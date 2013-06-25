@@ -41,8 +41,8 @@ std::vector<uav> uavs;
 //Main
 int main(int argc, char* argv[])
 {
-	//Default Port is 8080
-	std::string server_port="8080";
+	//Default Port is 80
+	std::string server_port="80";
 
 	//Get Command Line Port
 	if(argc>1)
@@ -428,6 +428,10 @@ void service_client(msl::socket& client,const std::string& message)
 			//Load File
 			if(msl::file_to_string(web_root+request,file,true))
 				client<<msl::http_pack_string(file,mime_type);
+
+			//Alias for a Webpage?
+			else if(msl::file_to_string(web_root+request+".html",file,true))
+				client<<msl::http_pack_string(file,"text/html");
 
 			//Bad File
 			else if(msl::file_to_string(web_root+"/not_found.html",file,true))
