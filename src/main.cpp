@@ -44,8 +44,6 @@ int main(int argc, char* argv[])
 	//Default Port is 8080
 	std::string server_port="8080";
 
-	uavs.push_back(uav(5,"/dev/ttyUSB0",57600));
-
 	//Get Command Line Port
 	if(argc>1)
 		server_port=argv[1];
