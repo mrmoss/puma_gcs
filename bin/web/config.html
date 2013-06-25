@@ -240,27 +240,29 @@
 				var response={};
 
 				var id_index=document.getElementById("entry_id").selectedIndex;
-				response.id=document.getElementById("entry_id").options[id_index].value.toString();
-
 				var port_index=document.getElementById("entry_port").selectedIndex;
-				response.port=document.getElementById("entry_port").options[port_index].value.toString();
-
 				var baud_index=document.getElementById("entry_baud").selectedIndex;
-				response.baud=document.getElementById("entry_baud").options[baud_index].value.toString();
 
-				var xmlhttp=new XMLHttpRequest();
-
-				xmlhttp.onreadystatechange=function()
+				if(id_index>=0&&port_index>=0&&baud_index>=0)
 				{
-					if(xmlhttp.readyState==4&&xmlhttp.status==200)
-					{
-						if(xmlhttp.responseText.length>0)
-							alert(xmlhttp.responseText);
-					}
-				}
+					response.id=document.getElementById("entry_id").options[id_index].value.toString();
+					response.port=document.getElementById("entry_port").options[port_index].value.toString();
+					response.baud=document.getElementById("entry_baud").options[baud_index].value.toString();
 
-				xmlhttp.open("GET",encodeURIComponent("&add="+JSON.stringify(response)),true);
-				xmlhttp.send(null);
+					var xmlhttp=new XMLHttpRequest();
+
+					xmlhttp.onreadystatechange=function()
+					{
+						if(xmlhttp.readyState==4&&xmlhttp.status==200)
+						{
+							if(xmlhttp.responseText.length>0)
+								alert(xmlhttp.responseText);
+						}
+					}
+
+					xmlhttp.open("GET",encodeURIComponent("&add="+JSON.stringify(response)),true);
+					xmlhttp.send(null);
+				}
 			}
 
 			//The fuck javascript?
