@@ -43,6 +43,9 @@ namespace msl
 			//Update Function (Connects Clients and Runs Web Server)
 			void update();
 
+			//Close Function (Closes Server)
+			void close();
+
 		private:
 			//Member Variables
 			bool(*_user_service_client)(msl::socket& client,const std::string& message);

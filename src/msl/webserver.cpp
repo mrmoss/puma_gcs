@@ -103,6 +103,21 @@ void msl::webserver::update()
 	usleep(0);
 }
 
+//Close Function (Closes Server)
+void msl::webserver::close()
+{
+	//Close Down Clients
+	for(unsigned int ii=0;ii<_clients.size();++ii)
+		_clients[ii].close();
+
+	//Resize Clients
+	_clients.resize(0);
+	_client_messages.resize(0);
+
+	//Close Server
+	_socket.close();
+}
+
 //Service Client Function Definition
 void msl::webserver::service_client(msl::socket& client,const std::string& message)
 {

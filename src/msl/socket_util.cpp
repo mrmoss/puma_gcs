@@ -47,7 +47,6 @@ std::string msl::http_to_ascii(std::string symbols)
 		symbols.replace(pos,6,"\n");
 	}
 
-
 	//Parse String
 	for(unsigned int ii=0;ii<symbols.size();++ii)
 	{
