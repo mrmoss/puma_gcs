@@ -16,3 +16,10 @@ Installing the server:
 To compile the server from source:
 	Windows:	Run make.bat.
 	Linux/Mac:	Run make.
+
+Firmware:
+	Merge the hardware folder included in the /frw folder with your arduino installation.
+	The hardware folder has the standard library.
+	The standard library includes things like:  strings, vectors, etc...
+	If you get an error message saying:  "prog_uchar does not name a type" uncomment line 60 of MPU6050_6Axis_MotionApps20.h.
+	The prog_uchar variable type has been deprecated...so it shouldn't be used, but the MPU source uses it...

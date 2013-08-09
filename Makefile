@@ -10,4 +10,4 @@ gcs: $(SRC)
 	$(COMPILER) $(CFLAGS) $(SRC) -o $(OUT)/$@
 
 clean:
-	rm -f $(OUT)/gcs
+	rm -f $(OUT)/gcs-linux64
